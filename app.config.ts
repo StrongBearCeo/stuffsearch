@@ -56,7 +56,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   web: {
     bundler: 'metro',
-    output: 'static',
+    // 'single' = client-side rendering only (no SSR). Avoids window/SecureStore
+    // not being available during server-side static rendering.
+    output: 'single',
     favicon: './assets/favicon.png',
   },
   plugins: [

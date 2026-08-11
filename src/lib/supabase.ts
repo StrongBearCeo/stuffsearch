@@ -6,6 +6,7 @@
  */
 import 'react-native-url-polyfill/auto';
 import { createClient } from '@supabase/supabase-js';
+import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import type { Database, Tables, Enums } from './database.types';
 
@@ -19,16 +20,34 @@ if (!supabaseUrl || !supabaseAnonKey) {
   );
 }
 
-/** Custom storage backed by expo-secure-store (Keychain / Keystore). */
-const expoSecureStorage = {
-  getItem: (key: string) => SecureStore.getItemAsync(key),
-  setItem: (key: string, value: string) => SecureStore.setItemAsync(key, value),
-  removeItem: (key: string) => SecureStore.deleteItemAsync(key),
-};
+/**
+ * Auth session storage. On native we use expo-secure-store (Keychain/Keystore);
+ * on web SecureStore isn't available, so we fall back to AsyncStorage.
+ */
+const authStorage = Platform.OS === 'web'
+  ? {
+      getItem: async (key: string) => {
+        const AsyncStorage = await import('@react-native-async-storage/async-storage');
+        return AsyncStorage.default.getItem(key);
+      },
+      setItem: async (key: string, value: string) => {
+        const AsyncStorage = await import('@react-native-async-storage/async-storage');
+        await AsyncStorage.default.setItem(key, value);
+      },
+      removeItem: async (key: string) => {
+        const AsyncStorage = await import('@react-native-async-storage/async-storage');
+        await AsyncStorage.default.removeItem(key);
+      },
+    }
+  : {
+      getItem: (key: string) => SecureStore.getItemAsync(key),
+      setItem: (key: string, value: string) => SecureStore.setItemAsync(key, value),
+      removeItem: (key: string) => SecureStore.deleteItemAsync(key),
+    };
 
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   auth: {
-    storage: expoSecureStorage,
+    storage: authStorage,
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: false,
