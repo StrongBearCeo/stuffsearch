@@ -94,7 +94,26 @@ create index if not exists households_invite_token_idx on public.households(invi
 
 alter table public.households enable row level security;
 
+-- ───────────────────────────────────────────────────────────────
+-- household_members  — join table; PK (household_id, user_id)
+-- Defined BEFORE the helper functions and policies that reference it.
+-- ───────────────────────────────────────────────────────────────
+create table if not exists public.household_members (
+  household_id  uuid not null references public.households(id) on delete cascade,
+  user_id       uuid not null references auth.users(id) on delete cascade,
+  role          household_role not null default 'member',
+  joined_at     timestamptz not null default now(),
+  primary key (household_id, user_id)
+);
+
+create index if not exists household_members_user_idx on public.household_members(user_id);
+
+alter table public.household_members enable row level security;
+
 -- Helper: is the requesting user a member of this household (any role)?
+-- Defined after both households + household_members exist; referenced by RLS
+-- policies below. Marked SECURITY DEFINER so policy checks can read membership
+-- rows regardless of the caller's direct table access.
 create or replace function public.is_household_member(_household_id uuid)
 returns boolean
 language sql
@@ -122,6 +141,7 @@ as $$
   );
 $$;
 
+-- ── households policies ──
 drop policy if exists "households visible to members" on public.households;
 create policy "households visible to members"
   on public.households for select
@@ -142,21 +162,7 @@ create policy "households delete by owner"
   on public.households for delete
   using (public.is_household_owner(id));
 
--- ───────────────────────────────────────────────────────────────
--- household_members  — join table; PK (household_id, user_id)
--- ───────────────────────────────────────────────────────────────
-create table if not exists public.household_members (
-  household_id  uuid not null references public.households(id) on delete cascade,
-  user_id       uuid not null references auth.users(id) on delete cascade,
-  role          household_role not null default 'member',
-  joined_at     timestamptz not null default now(),
-  primary key (household_id, user_id)
-);
-
-create index if not exists household_members_user_idx on public.household_members(user_id);
-
-alter table public.household_members enable row level security;
-
+-- ── household_members policies ──
 -- A user can read the membership rows of any household they belong to.
 drop policy if exists "members visible to household members" on public.household_members;
 create policy "members visible to household members"

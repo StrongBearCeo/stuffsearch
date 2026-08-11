@@ -1,0 +1,160 @@
+{
+  "app": {
+    "name": "StuffSearch",
+    "tagline": "Find your things, fast."
+  },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "done": "Done",
+    "back": "Back",
+    "loading": "Loading…",
+    "empty": "Nothing here yet.",
+    "search": "Search",
+    "retry": "Retry",
+    "confirm": "Confirm",
+    "yes": "Yes",
+    "no": "No",
+    "optional": "optional"
+  },
+  "auth": {
+    "welcome": "Welcome to StuffSearch",
+    "subtitle": "Scan, store, and find anything in your home.",
+    "email": "Email",
+    "password": "Password",
+    "signIn": "Sign in",
+    "signUp": "Sign up",
+    "signInWithPassword": "Sign in with password",
+    "sendMagicLink": "Send magic link",
+    "magicLinkSent": "Check your email for a sign-in link.",
+    "noAccount": "Don't have an account?",
+    "haveAccount": "Already have an account?",
+    "signOut": "Sign out",
+    "useInvite": "Have an invite code? Scan it",
+    "displayName": "Display name"
+  },
+  "tabs": {
+    "home": "Home",
+    "items": "Items",
+    "places": "Places",
+    "scan": "Scan"
+  },
+  "household": {
+    "title": "Household",
+    "create": "Create household",
+    "createPrompt": "Start your first household to begin organizing.",
+    "name": "Household name",
+    "members": "Members",
+    "owner": "Owner",
+    "member": "Member",
+    "invite": "Invite",
+    "inviteTitle": "Invite to household",
+    "inviteHint": "Share this QR or link with someone you want to join.",
+    "join": "Join household",
+    "joinPrompt": "Scan the invite code or open the invite link.",
+    "switch": "Switch household",
+    "leave": "Leave household",
+    "leaveConfirm": "Leave this household? You can rejoin with an invite.",
+    "transferOwnership": "Make owner"
+  },
+  "items": {
+    "title": "Items",
+    "new": "Add item",
+    "name": "Name",
+    "description": "Description",
+    "category": "Category",
+    "location": "Location",
+    "notLocated": "Not in a place",
+    "history": "History",
+    "boundCodes": "Codes",
+    "photo": "Photo",
+    "productLink": "Product link",
+    "movedBy": "Moved by",
+    "searchPlaceholder": "Search items…",
+    "empty": "No items yet. Scan or add one to begin."
+  },
+  "places": {
+    "title": "Places",
+    "new": "Add place",
+    "name": "Name",
+    "description": "Description",
+    "parent": "Inside",
+    "contents": "Contents",
+    "none": "Top level",
+    "searchPlaceholder": "Search places…",
+    "empty": "No places yet. Add a room or shelf to begin."
+  },
+  "scan": {
+    "title": "Scan",
+    "hint": "Point at a QR or barcode",
+    "permissionTitle": "Camera permission",
+    "permissionMessage": "StuffSearch needs camera access to scan codes.",
+    "permissionAction": "Grant access",
+    "torch": "Torch",
+    "manualEntry": "Enter code manually",
+    "enterCode": "Enter code",
+    "activePlace": "Active place",
+    "setActivePlace": "Set a place to assign scanned items to",
+    "noActivePlace": "No active place set — scanned items will open without assigning."
+  },
+  "scanResolve": {
+    "opening": "Opening…",
+    "assigned": "Assigned to {{place}}",
+    "switchPrompt": "This code belongs to “{{name}}” in the “{{household}}” household. Switch and open?",
+    "switchAndOpen": "Switch & open",
+    "noMatch": "No match",
+    "noMatchHint": "This code isn't bound to anything yet.",
+    "createItem": "Create item with this code",
+    "createPlace": "Create place with this code",
+    "productLookup": "Look up product",
+    "lookingUp": "Looking up product…"
+  },
+  "search": {
+    "title": "Search",
+    "placeholder": "Search your stuff…",
+    "voice": "Voice search",
+    "listening": "Listening…",
+    "semantic": "Semantic search",
+    "askPlaceholder": "Ask: “Where are the Christmas lights?”",
+    "ask": "Ask",
+    "results": "Results",
+    "noResults": "No results"
+  },
+  "codes": {
+    "title": "Bound codes",
+    "bind": "Bind code",
+    "value": "Code value",
+    "type": "Type",
+    "label": "Label",
+    "unbind": "Unbind",
+    "unbindConfirm": "Unbind this code from the item?"
+  },
+  "settings": {
+    "title": "Settings",
+    "language": "Language",
+    "english": "English",
+    "vietnamese": "Tiếng Việt",
+    "voice": "Voice provider",
+    "onDevice": "On-device",
+    "account": "Account",
+    "about": "About",
+    "securityNote": "Keys are stored securely on Supabase and never bundled in the app."
+  },
+  "errors": {
+    "generic": "Something went wrong.",
+    "network": "Network error. Check your connection.",
+    "notFound": "Not found.",
+    "permission": "You don't have permission to do that."
+  },
+  "print": {
+    "title": "Print codes",
+    "hint": "Print sheets of app-generated codes for your items and places.",
+    "itemsSection": "Items without codes",
+    "placesSection": "Places without codes",
+    "print": "Print / Share",
+    "nothing": "Everything already has a code. 🎉"
+  }
+}

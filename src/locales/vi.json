@@ -1,0 +1,160 @@
+{
+  "app": {
+    "name": "StuffSearch",
+    "tagline": "Tìm đồ nhanh."
+  },
+  "common": {
+    "save": "Lưu",
+    "cancel": "Huỷ",
+    "delete": "Xoá",
+    "edit": "Sửa",
+    "create": "Tạo",
+    "done": "Xong",
+    "back": "Quay lại",
+    "loading": "Đang tải…",
+    "empty": "Chưa có gì.",
+    "search": "Tìm",
+    "retry": "Thử lại",
+    "confirm": "Xác nhận",
+    "yes": "Có",
+    "no": "Không",
+    "optional": "tuỳ chọn"
+  },
+  "auth": {
+    "welcome": "Chào mừng đến StuffSearch",
+    "subtitle": "Quét, lưu và tìm mọi thứ trong nhà.",
+    "email": "Email",
+    "password": "Mật khẩu",
+    "signIn": "Đăng nhập",
+    "signUp": "Đăng ký",
+    "signInWithPassword": "Đăng nhập bằng mật khẩu",
+    "sendMagicLink": "Gửi liên kết magic",
+    "magicLinkSent": "Hãy kiểm tra email để lấy liên kết đăng nhập.",
+    "noAccount": "Chưa có tài khoản?",
+    "haveAccount": "Đã có tài khoản?",
+    "signOut": "Đăng xuất",
+    "useInvite": "Có mã mời? Quét mã đó",
+    "displayName": "Tên hiển thị"
+  },
+  "tabs": {
+    "home": "Trang chủ",
+    "items": "Đồ vật",
+    "places": "Nơi chứa",
+    "scan": "Quét"
+  },
+  "household": {
+    "title": "Hộ gia đình",
+    "create": "Tạo hộ gia đình",
+    "createPrompt": "Tạo hộ gia đình đầu tiên để bắt đầu sắp xếp.",
+    "name": "Tên hộ gia đình",
+    "members": "Thành viên",
+    "owner": "Chủ",
+    "member": "Thành viên",
+    "invite": "Mời",
+    "inviteTitle": "Mời vào hộ gia đình",
+    "inviteHint": "Chia sẻ mã QR hoặc liên kết này cho người muốn tham gia.",
+    "join": "Tham gia hộ gia đình",
+    "joinPrompt": "Quét mã mời hoặc mở liên kết mời.",
+    "switch": "Đổi hộ gia đình",
+    "leave": "Rời hộ gia đình",
+    "leaveConfirm": "Rời hộ gia đình này? Bạn có thể tham gia lại bằng lời mời.",
+    "transferOwnership": "Đặt làm chủ"
+  },
+  "items": {
+    "title": "Đồ vật",
+    "new": "Thêm đồ",
+    "name": "Tên",
+    "description": "Mô tả",
+    "category": "Danh mục",
+    "location": "Vị trí",
+    "notLocated": "Chưa để vào nơi nào",
+    "history": "Lịch sử",
+    "boundCodes": "Mã",
+    "photo": "Ảnh",
+    "productLink": "Liên kết sản phẩm",
+    "movedBy": "Được di chuyển bởi",
+    "searchPlaceholder": "Tìm đồ vật…",
+    "empty": "Chưa có đồ vật nào. Quét hoặc thêm để bắt đầu."
+  },
+  "places": {
+    "title": "Nơi chứa",
+    "new": "Thêm nơi chứa",
+    "name": "Tên",
+    "description": "Mô tả",
+    "parent": "Nằm trong",
+    "contents": "Chứa",
+    "none": "Cấp cao nhất",
+    "searchPlaceholder": "Tìm nơi chứa…",
+    "empty": "Chưa có nơi chứa nào. Thêm phòng hoặc kệ để bắt đầu."
+  },
+  "scan": {
+    "title": "Quét",
+    "hint": "Hướng vào mã QR hoặc vạch",
+    "permissionTitle": "Quyền camera",
+    "permissionMessage": "StuffSearch cần truy cập camera để quét mã.",
+    "permissionAction": "Cấp quyền",
+    "torch": "Đèn",
+    "manualEntry": "Nhập mã thủ công",
+    "enterCode": "Nhập mã",
+    "activePlace": "Nơi chứa đang chọn",
+    "setActivePlace": "Chọn nơi chứa để gán đồ quét được",
+    "noActivePlace": "Chưa chọn nơi chứa — đồ quét được sẽ mở mà không gán."
+  },
+  "scanResolve": {
+    "opening": "Đang mở…",
+    "assigned": "Đã gán vào {{place}}",
+    "switchPrompt": "Mã này thuộc “{{name}}” trong hộ gia đình “{{household}}”. Đổi và mở?",
+    "switchAndOpen": "Đổi & mở",
+    "noMatch": "Không tìm thấy",
+    "noMatchHint": "Mã này chưa được gán cho đồ nào.",
+    "createItem": "Tạo đồ vật với mã này",
+    "createPlace": "Tạo nơi chứa với mã này",
+    "productLookup": "Tra cứu sản phẩm",
+    "lookingUp": "Đang tra cứu sản phẩm…"
+  },
+  "search": {
+    "title": "Tìm kiếm",
+    "placeholder": "Tìm đồ của bạn…",
+    "voice": "Tìm bằng giọng nói",
+    "listening": "Đang nghe…",
+    "semantic": "Tìm kiếm ngữ nghĩa",
+    "askPlaceholder": "Hỏi: “Đèn Giáng sinh ở đâu?”",
+    "ask": "Hỏi",
+    "results": "Kết quả",
+    "noResults": "Không có kết quả"
+  },
+  "codes": {
+    "title": "Mã đã gán",
+    "bind": "Gán mã",
+    "value": "Giá trị mã",
+    "type": "Loại",
+    "label": "Nhãn",
+    "unbind": "Bỏ gán",
+    "unbindConfirm": "Bỏ gán mã này khỏi đồ vật?"
+  },
+  "settings": {
+    "title": "Cài đặt",
+    "language": "Ngôn ngữ",
+    "english": "English",
+    "vietnamese": "Tiếng Việt",
+    "voice": "Nhà cung cấp giọng nói",
+    "onDevice": "Trên thiết bị",
+    "account": "Tài khoản",
+    "about": "Giới thiệu",
+    "securityNote": "Khoá được lưu an toàn trên Supabase, không bao giờ đi kèm ứng dụng."
+  },
+  "errors": {
+    "generic": "Đã có lỗi xảy ra.",
+    "network": "Lỗi mạng. Kiểm tra kết nối.",
+    "notFound": "Không tìm thấy.",
+    "permission": "Bạn không có quyền thực hiện việc đó."
+  },
+  "print": {
+    "title": "In mã",
+    "hint": "In các tờ mã do ứng dụng tạo cho đồ vật và nơi chứa.",
+    "itemsSection": "Đồ vật chưa có mã",
+    "placesSection": "Nơi chứa chưa có mã",
+    "print": "In / Chia sẻ",
+    "nothing": "Mọi thứ đã có mã rồi. 🎉"
+  }
+}
