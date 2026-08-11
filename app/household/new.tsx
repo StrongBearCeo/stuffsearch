@@ -4,8 +4,11 @@ import { ScrollView } from 'react-native';
 import { router } from 'expo-router';
 import { Screen, H1, Muted, Input, Button, ErrorBanner } from '../../src/components/primitives';
 import { useHousehold } from '../../src/lib/household';
+import { errorMessage } from '../../src/lib/errors';
 import { spacing } from '../../src/theme';
 import { useTranslation } from 'react-i18next';
+import { useHeaderTitle } from '../../src/lib/useHeaderTitle';
+import { hapticSuccess } from '../../src/lib/haptics';
 
 export default function NewHouseholdScreen() {
   const { t } = useTranslation();
@@ -13,15 +16,17 @@ export default function NewHouseholdScreen() {
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  useHeaderTitle(t('household.create'));
 
   async function submit() {
     setError(null);
     setBusy(true);
     try {
       await createHousehold(name.trim());
+      hapticSuccess();
       router.replace('/(tabs)');
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(errorMessage(e));
     } finally {
       setBusy(false);
     }

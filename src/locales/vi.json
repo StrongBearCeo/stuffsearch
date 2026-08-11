@@ -34,7 +34,10 @@
     "haveAccount": "Đã có tài khoản?",
     "signOut": "Đăng xuất",
     "useInvite": "Có mã mời? Quét mã đó",
-    "displayName": "Tên hiển thị"
+    "displayName": "Tên hiển thị",
+    "confirming": "Đang xác nhận email…",
+    "backToSignIn": "Quay lại đăng nhập",
+    "confirmNoLink": "Không tìm thấy liên kết xác nhận. Hãy yêu cầu liên kết đăng nhập mới."
   },
   "tabs": {
     "home": "Trang chủ",
@@ -58,7 +61,10 @@
     "switch": "Đổi hộ gia đình",
     "leave": "Rời hộ gia đình",
     "leaveConfirm": "Rời hộ gia đình này? Bạn có thể tham gia lại bằng lời mời.",
-    "transferOwnership": "Đặt làm chủ"
+    "transferOwnership": "Đặt làm chủ",
+    "inviteTokenPh": "Mã mời",
+    "linkCopied": "Đã sao chép liên kết",
+    "count": "{{count}} hộ gia đình"
   },
   "items": {
     "title": "Đồ vật",
@@ -74,7 +80,8 @@
     "productLink": "Liên kết sản phẩm",
     "movedBy": "Được di chuyển bởi",
     "searchPlaceholder": "Tìm đồ vật…",
-    "empty": "Chưa có đồ vật nào. Quét hoặc thêm để bắt đầu."
+    "empty": "Chưa có đồ vật nào. Quét hoặc thêm để bắt đầu.",
+    "enrich": "✨ Bổ sung"
   },
   "places": {
     "title": "Nơi chứa",
@@ -85,7 +92,8 @@
     "contents": "Chứa",
     "none": "Cấp cao nhất",
     "searchPlaceholder": "Tìm nơi chứa…",
-    "empty": "Chưa có nơi chứa nào. Thêm phòng hoặc kệ để bắt đầu."
+    "empty": "Chưa có nơi chứa nào. Thêm phòng hoặc kệ để bắt đầu.",
+    "setActive": "Đặt làm nơi chứa đang chọn"
   },
   "scan": {
     "title": "Quét",

@@ -22,3 +22,22 @@ export const spacing = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24 } as const;
 
 /** Tailwind/NativeWind breakpoint helpers (tablet ≥ 768). */
 export const tabletBreakpoint = 768;
+
+/**
+ * Shared react-navigation header options for the dark theme. Applied per-screen
+ * via Stack.Screen options={{ ...headerTheme, title }} so detail/edit/modal
+ * screens get a real platform back button while tab/auth screens stay headerless.
+ */
+export const headerTheme = {
+  headerShown: true,
+  headerTintColor: colors.text,
+  headerStyle: {
+    backgroundColor: colors.surface,
+  },
+  headerTitleStyle: {
+    color: colors.text,
+    fontWeight: '600' as const,
+  },
+  headerShadowVisible: false,
+  headerBackTitleVisible: false,
+} as const;

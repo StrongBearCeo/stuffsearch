@@ -6,10 +6,13 @@ import { Screen, H1, Card } from '../../src/components/primitives';
 import { useHousehold } from '../../src/lib/household';
 import { colors, spacing, radius } from '../../src/theme';
 import { useTranslation } from 'react-i18next';
+import { useHeaderTitle } from '../../src/lib/useHeaderTitle';
+import { hapticSuccess } from '../../src/lib/haptics';
 
 export default function SwitchHouseholdScreen() {
   const { t } = useTranslation();
   const { memberships, activeHousehold, setActiveHousehold } = useHousehold();
+  useHeaderTitle(t('household.switch'));
   return (
     <Screen>
       <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: 8 }}>
@@ -21,6 +24,7 @@ export default function SwitchHouseholdScreen() {
               key={m.households.id}
               onPress={async () => {
                 await setActiveHousehold(m.households.id);
+                hapticSuccess();
                 router.back();
               }}
             >

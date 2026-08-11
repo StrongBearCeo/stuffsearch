@@ -34,7 +34,10 @@
     "haveAccount": "Already have an account?",
     "signOut": "Sign out",
     "useInvite": "Have an invite code? Scan it",
-    "displayName": "Display name"
+    "displayName": "Display name",
+    "confirming": "Confirming your email…",
+    "backToSignIn": "Back to sign in",
+    "confirmNoLink": "No confirmation link was found. Request a new sign-in link."
   },
   "tabs": {
     "home": "Home",
@@ -58,7 +61,10 @@
     "switch": "Switch household",
     "leave": "Leave household",
     "leaveConfirm": "Leave this household? You can rejoin with an invite.",
-    "transferOwnership": "Make owner"
+    "transferOwnership": "Make owner",
+    "inviteTokenPh": "Invite token",
+    "linkCopied": "Link copied",
+    "count": "{{count}} household"
   },
   "items": {
     "title": "Items",
@@ -74,7 +80,8 @@
     "productLink": "Product link",
     "movedBy": "Moved by",
     "searchPlaceholder": "Search items…",
-    "empty": "No items yet. Scan or add one to begin."
+    "empty": "No items yet. Scan or add one to begin.",
+    "enrich": "✨ Enrich"
   },
   "places": {
     "title": "Places",
@@ -85,7 +92,8 @@
     "contents": "Contents",
     "none": "Top level",
     "searchPlaceholder": "Search places…",
-    "empty": "No places yet. Add a room or shelf to begin."
+    "empty": "No places yet. Add a room or shelf to begin.",
+    "setActive": "Set as active place"
   },
   "scan": {
     "title": "Scan",

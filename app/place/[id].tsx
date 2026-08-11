@@ -13,10 +13,13 @@ import type { Item } from '../../src/lib/supabase';
 import { useUiStore } from '../../src/store/ui';
 import { spacing } from '../../src/theme';
 import { useTranslation } from 'react-i18next';
+import { useHeaderTitle } from '../../src/lib/useHeaderTitle';
+import { hapticSuccess, hapticWarning } from '../../src/lib/haptics';
 
 export default function PlaceDetailScreen() {
   const { t } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
+  useHeaderTitle(t('places.title'));
   const { activeHouseholdId } = useHousehold();
   const { data: place, isLoading, error } = usePlace(id);
   const { data: contents } = usePlaceContents(id);
@@ -36,8 +39,28 @@ export default function PlaceDetailScreen() {
         text: t('common.delete'),
         style: 'destructive',
         onPress: async () => {
+          hapticWarning();
           await deletePlace.mutateAsync(place!.id);
           router.back();
+        },
+      },
+    ]);
+  }
+
+  function onSetActive() {
+    setActivePlace(place!.id, place!.name);
+    hapticSuccess();
+  }
+
+  function onUnbind(codeValue: string, codeId: string) {
+    Alert.alert(t('codes.unbind'), codeValue, [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('codes.unbind'),
+        style: 'destructive',
+        onPress: () => {
+          hapticWarning();
+          unbind.mutate(codeId);
         },
       },
     ]);
@@ -57,10 +80,7 @@ export default function PlaceDetailScreen() {
           <Button title={t('common.edit')} variant="ghost" onPress={() => router.push({ pathname: '/place/new', params: { id: place.id } } as never)} />
         </View>
 
-        <Button
-          title={`${t('scan.activePlace')}: ${t('common.done') === 'Done' ? 'Set' : 'Chọn'}`}
-          onPress={() => setActivePlace(place.id, place.name)}
-        />
+        <Button title={t('places.setActive')} onPress={onSetActive} />
 
         <View style={{ gap: 8 }}>
           <Body style={{ fontWeight: '700' }}>{t('places.contents')}</Body>
@@ -73,7 +93,9 @@ export default function PlaceDetailScreen() {
           )}
         </View>
 
-        {codes ? <BoundCodesList codes={codes} onUnbind={(c) => unbind.mutate(c.id)} /> : null}
+        {codes ? (
+          <BoundCodesList codes={codes} onUnbind={(c) => onUnbind(c.code_value, c.id)} />
+        ) : null}
 
         <Button title={t('common.delete')} variant="danger" onPress={onDelete} loading={deletePlace.isPending} />
       </ScrollView>

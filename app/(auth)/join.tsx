@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router';
 import { H1, Muted, Input, Button, Screen, ErrorBanner } from '../../src/components/primitives';
 import { spacing } from '../../src/theme';
 import { useHousehold } from '../../src/lib/household';
+import { errorMessage } from '../../src/lib/errors';
 import { useTranslation } from 'react-i18next';
 
 export default function JoinScreen() {
@@ -22,7 +23,7 @@ export default function JoinScreen() {
       await joinByInviteToken(token.trim());
       router.replace('/(tabs)');
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(errorMessage(e));
     } finally {
       setBusy(false);
     }
@@ -34,7 +35,7 @@ export default function JoinScreen() {
         <H1>{t('household.join')}</H1>
         <Muted>{t('household.joinPrompt')}</Muted>
         <Input
-          placeholder="invite token"
+          placeholder={t('household.inviteTokenPh')}
           value={token}
           onChangeText={setToken}
           autoCapitalize="none"

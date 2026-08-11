@@ -13,6 +13,7 @@ import type { Item } from '../src/lib/supabase';
 import type { SemanticSearchResult } from '../src/lib/llm';
 import { spacing } from '../src/theme';
 import { useTranslation } from 'react-i18next';
+import { useHeaderTitle } from '../src/lib/useHeaderTitle';
 
 /** A single search result row — either a full Item (text search) or a semantic hit. */
 type SearchRow = Item | SemanticSearchResult;
@@ -24,6 +25,7 @@ export default function SearchScreen() {
   const { activeHouseholdId } = useHousehold();
   const { profile } = useAuth();
   const [q, setQ] = useState('');
+  useHeaderTitle(t('search.title'));
 
   // Text search is local + fast; semantic search is LLM-backed.
   const text = useItems(q);

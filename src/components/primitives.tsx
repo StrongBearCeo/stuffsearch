@@ -124,6 +124,40 @@ export function EmptyState({ title, hint }: { title: string; hint?: string }) {
   );
 }
 
+/** A row of placeholder cards shown while a list is loading, so the user
+ * sees structure immediately instead of a blank screen that pops in.
+ * `rows` controls how many placeholder rows to render (default 4). */
+export function ListSkeleton({ rows = 4 }: { rows?: number }) {
+  return (
+    <View style={{ paddingHorizontal: 16, gap: 8, paddingTop: 8 }}>
+      {Array.from({ length: rows }).map((_, i) => (
+        <View
+          key={i}
+          style={{
+            backgroundColor: colors.surface,
+            borderRadius: radius.lg,
+            borderWidth: 1,
+            borderColor: colors.border,
+            padding: 12,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 12,
+            opacity: 0.6,
+          }}
+        >
+          {/* thumbnail placeholder */}
+          <View style={{ width: 44, height: 44, borderRadius: radius.md, backgroundColor: colors.surfaceAlt }} />
+          {/* two-line text placeholder */}
+          <View style={{ flex: 1, gap: 6 }}>
+            <View style={{ height: 14, width: '55%', borderRadius: radius.sm, backgroundColor: colors.surfaceAlt }} />
+            <View style={{ height: 11, width: '35%', borderRadius: radius.sm, backgroundColor: colors.surfaceAlt }} />
+          </View>
+        </View>
+      ))}
+    </View>
+  );
+}
+
 export function ErrorBanner({ message }: { message: string }) {
   const { t } = useTranslation();
   return (

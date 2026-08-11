@@ -7,14 +7,18 @@ import { setLanguage, LANGUAGES, type AppLanguage } from '../src/lib/i18n';
 import { colors, spacing, radius } from '../src/theme';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../src/lib/supabase';
+import { useHeaderTitle } from '../src/lib/useHeaderTitle';
+import { hapticSuccess } from '../src/lib/haptics';
 
 export default function SettingsScreen() {
   const { t, i18n } = useTranslation();
   const { profile, signOut } = useAuth();
   const currentLang = (i18n.language as AppLanguage) ?? 'en';
+  useHeaderTitle(t('settings.title'));
 
   async function pickLanguage(lng: AppLanguage) {
     await setLanguage(lng);
+    hapticSuccess();
     if (profile) {
       await supabase.from('profiles').update({ default_language: lng }).eq('id', profile.id);
     }

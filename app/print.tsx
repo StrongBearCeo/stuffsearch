@@ -12,12 +12,15 @@ import { useHousehold } from '../src/lib/household';
 import type { Item, Place } from '../src/lib/supabase';
 import { spacing } from '../src/theme';
 import { useTranslation } from 'react-i18next';
+import { useHeaderTitle } from '../src/lib/useHeaderTitle';
 
 export default function PrintScreen() {
   const { t } = useTranslation();
   const { activeHouseholdId } = useHousehold();
   const items = useItems();
   const places = usePlaces();
+  useHeaderTitle(t('print.title'));
+  const loading = items.isLoading || places.isLoading;
 
   const printable: PrintableCode[] = useMemo(() => {
     const hh = activeHouseholdId ?? '';
@@ -43,7 +46,9 @@ export default function PrintScreen() {
       <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: 12 }}>
         <H1>{t('print.title')}</H1>
         <Muted>{t('print.hint')}</Muted>
-        {printable.length === 0 ? (
+        {loading ? (
+          <Muted>{t('common.loading')}</Muted>
+        ) : printable.length === 0 ? (
           <EmptyState title={t('print.nothing')} />
         ) : (
           <>

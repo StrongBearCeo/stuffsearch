@@ -12,10 +12,13 @@ import { useHousehold } from '../../src/lib/household';
 import type { Place, ItemHistory } from '../../src/lib/supabase';
 import { colors, spacing } from '../../src/theme';
 import { useTranslation } from 'react-i18next';
+import { useHeaderTitle } from '../../src/lib/useHeaderTitle';
+import { hapticWarning } from '../../src/lib/haptics';
 
 export default function ItemDetailScreen() {
   const { t } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
+  useHeaderTitle(t('items.title'));
   const { activeHouseholdId } = useHousehold();
   const { data: item, isLoading, error } = useItem(id);
   const { data: history } = useItemHistory(id);
@@ -42,8 +45,23 @@ export default function ItemDetailScreen() {
         text: t('common.delete'),
         style: 'destructive',
         onPress: async () => {
+          hapticWarning();
           await deleteItem.mutateAsync(item!.id);
           router.back();
+        },
+      },
+    ]);
+  }
+
+  function onUnbind(codeValue: string, codeId: string) {
+    Alert.alert(t('codes.unbind'), codeValue, [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('codes.unbind'),
+        style: 'destructive',
+        onPress: () => {
+          hapticWarning();
+          unbind.mutate(codeId);
         },
       },
     ]);
@@ -92,7 +110,9 @@ export default function ItemDetailScreen() {
           </Card>
         ) : null}
 
-        {codes ? <BoundCodesList codes={codes} onUnbind={(c) => unbind.mutate(c.id)} /> : null}
+        {codes ? (
+          <BoundCodesList codes={codes} onUnbind={(c) => onUnbind(c.code_value, c.id)} />
+        ) : null}
 
         <View style={{ gap: 8 }}>
           <Body style={{ fontWeight: '700' }}>{t('items.history')}</Body>

@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next';
 
 export default function HomeScreen() {
   const { t } = useTranslation();
+  const router = useRouter();
   const { memberships } = useHousehold();
 
   // Household gate: no households yet → prompt to create one.
@@ -22,7 +23,17 @@ export default function HomeScreen() {
   return (
     <Screen>
       <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: 12 }}>
-        <H1>{t('app.name')}</H1>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <H1>{t('app.name')}</H1>
+          <TouchableOpacity
+            onPress={() => router.push('/settings')}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            accessibilityRole="button"
+            accessibilityLabel={t('settings.title')}
+          >
+            <Text style={{ fontSize: 22 }}>⚙️</Text>
+          </TouchableOpacity>
+        </View>
         <HouseholdSwitcher />
         <QuickActions />
         <RecentItems />

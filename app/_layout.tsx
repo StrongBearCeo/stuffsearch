@@ -1,7 +1,8 @@
 /** Root layout: initialize i18n, wire AuthProvider + HouseholdProvider + React Query. */
 import React, { useEffect, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { SafeAreaView, ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useFonts } from 'expo-font';
@@ -12,7 +13,7 @@ import { HouseholdProvider } from '../src/lib/household';
 import { initI18n } from '../src/lib/i18n';
 import { queryClient } from '../src/lib/offline';
 import { QueryClientProvider } from '@tanstack/react-query';
-import { colors } from '../src/theme';
+import { colors, headerTheme } from '../src/theme';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -58,9 +59,10 @@ export default function RootLayout() {
             <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
               <StatusBar style="light" />
               <Gate>
-                <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }}>
-                  <Stack.Screen name="(auth)" />
-                  <Stack.Screen name="(tabs)" />
+                <Stack screenOptions={{ ...headerTheme, contentStyle: { backgroundColor: colors.bg } }}>
+                  <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+                  <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                  <Stack.Screen name="index" options={{ headerShown: false }} />
                 </Stack>
               </Gate>
             </SafeAreaView>

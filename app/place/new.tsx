@@ -7,15 +7,19 @@ import { useCreatePlace, useUpdatePlace, usePlace } from '../../src/hooks/usePla
 import { useBindExternalCode } from '../../src/hooks/useExternalCode';
 import { useHousehold } from '../../src/lib/household';
 import { useAuth } from '../../src/lib/auth';
+import { errorMessage } from '../../src/lib/errors';
 import { scannerTypeToCodeType } from '../../src/lib/constants';
 import { spacing } from '../../src/theme';
 import { useTranslation } from 'react-i18next';
+import { useHeaderTitle } from '../../src/lib/useHeaderTitle';
+import { hapticSuccess } from '../../src/lib/haptics';
 import type { ExternalCodeType } from '../../src/lib/supabase';
 
 export default function NewPlaceScreen() {
   const { t } = useTranslation();
   const params = useLocalSearchParams<{ id?: string; code?: string; type?: string; name?: string }>();
   const editing = !!params.id;
+  useHeaderTitle(editing ? t('common.edit') : t('places.new'));
   const { data: existing } = usePlace(params.id);
 
   const { activeHouseholdId } = useHousehold();
@@ -39,10 +43,11 @@ export default function NewPlaceScreen() {
   }, [existing?.id, params.name]);
 
   async function onSave() {
+    if (!name.trim()) return;
     setError(null);
     try {
       const payload = {
-        name: name.trim() || 'Untitled',
+        name: name.trim(),
         description: description.trim() || null,
       };
       let placeId: string;
@@ -64,11 +69,14 @@ export default function NewPlaceScreen() {
           });
         }
       }
+      hapticSuccess();
       router.replace(`/place/${placeId}`);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(errorMessage(e));
     }
   }
+
+  const nameEmpty = name.trim().length === 0;
 
   return (
     <Screen>
@@ -90,7 +98,12 @@ export default function NewPlaceScreen() {
           style={{ minHeight: 80 }}
         />
         {error ? <ErrorBanner message={error} /> : null}
-        <Button title={t('common.save')} onPress={onSave} loading={createPlace.isPending || updatePlace.isPending} />
+        <Button
+          title={t('common.save')}
+          onPress={onSave}
+          loading={createPlace.isPending || updatePlace.isPending}
+          disabled={nameEmpty}
+        />
       </ScrollView>
     </Screen>
   );

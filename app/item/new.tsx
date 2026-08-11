@@ -8,10 +8,13 @@ import { useCreateItem, useUpdateItem, useItem } from '../../src/hooks/useItems'
 import { useBindExternalCode } from '../../src/hooks/useExternalCode';
 import { useHousehold } from '../../src/lib/household';
 import { useAuth } from '../../src/lib/auth';
+import { errorMessage } from '../../src/lib/errors';
 import { enrichItem } from '../../src/lib/llm';
 import { scannerTypeToCodeType } from '../../src/lib/constants';
 import { spacing } from '../../src/theme';
 import { useTranslation } from 'react-i18next';
+import { useHeaderTitle } from '../../src/lib/useHeaderTitle';
+import { hapticSuccess } from '../../src/lib/haptics';
 import type { ExternalCodeType } from '../../src/lib/supabase';
 
 export default function NewItemScreen() {
@@ -24,6 +27,7 @@ export default function NewItemScreen() {
     category?: string;
   }>();
   const editing = !!params.id;
+  useHeaderTitle(editing ? t('common.edit') : t('items.new'));
   const { data: existing } = useItem(params.id);
 
   const { activeHouseholdId } = useHousehold();
@@ -54,10 +58,11 @@ export default function NewItemScreen() {
   }, [existing?.id, params.name]);
 
   async function onSave() {
+    if (!name.trim()) return;
     setError(null);
     try {
       const payload = {
-        name: name.trim() || 'Untitled',
+        name: name.trim(),
         description: description.trim() || null,
         category: category.trim() || null,
         product_link: productLink.trim() || null,
@@ -82,9 +87,10 @@ export default function NewItemScreen() {
           });
         }
       }
+      hapticSuccess();
       router.replace(`/item/${itemId}`);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(errorMessage(e));
     }
   }
 
@@ -105,7 +111,7 @@ export default function NewItemScreen() {
       if (res.description) setDescription(res.description);
       if (res.product_link) setProductLink(res.product_link);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(errorMessage(e));
     } finally {
       setEnriching(false);
     }
@@ -134,11 +140,16 @@ export default function NewItemScreen() {
         <Input placeholder={t('items.productLink')} value={productLink} onChangeText={setProductLink} autoCapitalize="none" />
 
         {!editing ? (
-          <Button title="✨ Enrich" variant="ghost" onPress={onEnrich} loading={enriching} />
+          <Button title={t('items.enrich')} variant="ghost" onPress={onEnrich} loading={enriching} />
         ) : null}
 
         {error ? <ErrorBanner message={error} /> : null}
-        <Button title={t('common.save')} onPress={onSave} loading={createItem.isPending || updateItem.isPending} />
+        <Button
+          title={t('common.save')}
+          onPress={onSave}
+          loading={createItem.isPending || updateItem.isPending}
+          disabled={name.trim().length === 0}
+        />
       </ScrollView>
     </Screen>
   );

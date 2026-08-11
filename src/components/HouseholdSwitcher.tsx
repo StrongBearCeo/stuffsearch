@@ -15,12 +15,22 @@ export function HouseholdSwitcher() {
   return (
     <Card style={{ gap: 8 }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Text style={{ color: colors.text, fontWeight: '700', fontSize: 16 }}>
-          {activeHousehold.name}
-        </Text>
+        {/* Tapping the household name opens the members + invite screen. */}
+        <TouchableOpacity
+          onPress={() => router.push('/household')}
+          style={{ paddingVertical: 4 }}
+          accessibilityRole="button"
+          accessibilityLabel={t('household.title')}
+        >
+          <Text style={{ color: colors.text, fontWeight: '700', fontSize: 16 }}>
+            {activeHousehold.name}
+          </Text>
+        </TouchableOpacity>
         <TouchableOpacity
           onPress={() => router.push('/household/switch')}
           style={{ paddingHorizontal: 8, paddingVertical: 4 }}
+          accessibilityRole="button"
+          accessibilityLabel={t('household.switch')}
         >
           <Text style={{ color: colors.primary, fontSize: 13, fontWeight: '600' }}>
             {t('household.switch')} →
@@ -53,7 +63,7 @@ export function HouseholdSwitcher() {
           })}
         </ScrollView>
       ) : (
-        <Muted>{memberships.length} household</Muted>
+        <Muted>{t('household.count', { count: memberships.length })}</Muted>
       )}
     </Card>
   );

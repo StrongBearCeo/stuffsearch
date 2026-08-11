@@ -8,6 +8,7 @@ import { useHousehold } from '../src/lib/household';
 import { useAuth } from '../src/lib/auth';
 import { spacing } from '../src/theme';
 import { useTranslation } from 'react-i18next';
+import { useHeaderTitle } from '../src/lib/useHeaderTitle';
 
 export default function AskScreen() {
   const { t } = useTranslation();
@@ -15,6 +16,7 @@ export default function AskScreen() {
   const { profile } = useAuth();
   const [question, setQuestion] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  useHeaderTitle(t('search.ask'));
 
   const { data, error, isFetching } = useAsk(
     activeHouseholdId,

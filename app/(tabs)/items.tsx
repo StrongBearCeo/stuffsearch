@@ -2,10 +2,10 @@
 import React, { useState } from 'react';
 import { View, FlatList, RefreshControl } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Screen, Input, EmptyState, ErrorBanner, Button, H1 } from '../../src/components/primitives';
+import { Screen, Input, EmptyState, ErrorBanner, Button, H1, ListSkeleton } from '../../src/components/primitives';
 import { ItemCard } from '../../src/components/ItemCard';
 import { useItems } from '../../src/hooks/useItems';
-import { spacing } from '../../src/theme';
+import { spacing, colors } from '../../src/theme';
 import { useTranslation } from 'react-i18next';
 
 export default function ItemsScreen() {
@@ -31,12 +31,14 @@ export default function ItemsScreen() {
         ListEmptyComponent={
           error ? (
             <ErrorBanner message={(error as Error).message} />
-          ) : isLoading ? null : (
+          ) : isLoading ? (
+            <ListSkeleton />
+          ) : (
             <EmptyState title={t('items.empty')} />
           )
         }
         contentContainerStyle={{ paddingBottom: spacing.xl }}
-        refreshControl={<RefreshControl refreshing={isFetching} onRefresh={refetch} tintColor="#94a3b8" />}
+        refreshControl={<RefreshControl refreshing={isFetching} onRefresh={refetch} tintColor={colors.textMuted} />}
       />
     </Screen>
   );

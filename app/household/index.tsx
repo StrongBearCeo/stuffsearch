@@ -11,6 +11,8 @@ import { useHousehold } from '../../src/lib/household';
 import { colors, spacing } from '../../src/theme';
 import { useTranslation } from 'react-i18next';
 import * as Clipboard from 'expo-clipboard';
+import { useHeaderTitle } from '../../src/lib/useHeaderTitle';
+import { hapticSuccess } from '../../src/lib/haptics';
 
 export default function HouseholdIndexScreen() {
   const { t } = useTranslation();
@@ -18,6 +20,7 @@ export default function HouseholdIndexScreen() {
   const { data: members, error } = useMembers();
   const updateRole = useUpdateMemberRole();
   const removeMember = useRemoveMember();
+  useHeaderTitle(activeHousehold?.name ?? t('household.title'));
 
   if (!activeHousehold) {
     return (
@@ -35,7 +38,8 @@ export default function HouseholdIndexScreen() {
 
   async function copyInvite() {
     await Clipboard.setStringAsync(inviteLink);
-    Alert.alert(t('household.invite'), inviteLink);
+    hapticSuccess();
+    Alert.alert(t('household.linkCopied'), inviteLink);
   }
 
   return (

@@ -12,6 +12,7 @@ import { useUiStore } from '../../src/store/ui';
 import { useHousehold } from '../../src/lib/household';
 import { colors } from '../../src/theme';
 import { useTranslation } from 'react-i18next';
+import { hapticSuccess } from '../../src/lib/haptics';
 import type { ExternalCodeType } from '../../src/lib/supabase';
 
 export default function ScanScreen() {
@@ -41,6 +42,7 @@ export default function ScanScreen() {
       setScanned(false);
       return;
     }
+    hapticSuccess();
     const codeType = rawType ? scannerTypeToCodeType(rawType) : 'other';
     if (o.type === 'deep-link') {
       // Route the deep-link via expo-router.
