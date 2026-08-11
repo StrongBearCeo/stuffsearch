@@ -1,6 +1,6 @@
 /** Items CRUD hooks, scoped to the active household. */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase, type Item, type TablesInsert, type TablesUpdate } from '../lib/supabase';
+import { supabase, type Item, type ItemHistory, type TablesInsert, type TablesUpdate } from '../lib/supabase';
 import { useHousehold } from '../lib/household';
 import { useAuth } from '../lib/auth';
 import { generateQrToken } from '../lib/qrcode';
@@ -39,10 +39,10 @@ export function useItem(id: string | undefined) {
 }
 
 export function useItemHistory(itemId: string | undefined) {
-  return useQuery({
+  return useQuery<ItemHistory[]>({
     queryKey: ['item_history', itemId],
     enabled: !!itemId,
-    queryFn: async () => {
+    queryFn: async (): Promise<ItemHistory[]> => {
       if (!itemId) return [];
       const { data, error } = await supabase
         .from('item_history')

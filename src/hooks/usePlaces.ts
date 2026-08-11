@@ -1,6 +1,6 @@
 /** Places CRUD hooks, scoped to the active household. */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase, type Place, type TablesInsert, type TablesUpdate } from '../lib/supabase';
+import { supabase, type Place, type Item, type TablesInsert, type TablesUpdate } from '../lib/supabase';
 import { useHousehold } from '../lib/household';
 import { useAuth } from '../lib/auth';
 import { generateQrToken } from '../lib/qrcode';
@@ -12,7 +12,7 @@ export function usePlaces(search?: string) {
   return useQuery<Place[]>({
     queryKey: [...KEY, activeHouseholdId, search ?? ''],
     enabled: !!activeHouseholdId,
-    queryFn: async () => {
+    queryFn: async (): Promise<Place[]> => {
       if (!activeHouseholdId) return [];
       let q = supabase.from('places').select('*').eq('household_id', activeHouseholdId);
       if (search && search.trim()) {
@@ -41,10 +41,10 @@ export function usePlace(id: string | undefined) {
 /** Items currently located in a place. */
 export function usePlaceContents(placeId: string | undefined) {
   const { activeHouseholdId } = useHousehold();
-  return useQuery({
+  return useQuery<Item[]>({
     queryKey: ['place_contents', placeId],
     enabled: !!placeId && !!activeHouseholdId,
-    queryFn: async () => {
+    queryFn: async (): Promise<Item[]> => {
       if (!placeId) return [];
       const { data, error } = await supabase
         .from('items')

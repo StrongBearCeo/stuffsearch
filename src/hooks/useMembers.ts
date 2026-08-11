@@ -18,7 +18,7 @@ export function useMembers() {
   return useQuery<MemberWithProfile[]>({
     queryKey: [...KEY, activeHouseholdId],
     enabled: !!activeHouseholdId,
-    queryFn: async () => {
+    queryFn: async (): Promise<MemberWithProfile[]> => {
       if (!activeHouseholdId) return [];
       // No FK from household_members.user_id → profiles.id (FK targets auth.users),
       // so the typed client can't infer the join. Query raw then resolve profiles.
