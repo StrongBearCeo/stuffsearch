@@ -1,7 +1,7 @@
 /** Ask the LLM: "where did I put the...?" over the active household's inventory. */
 import React, { useState } from 'react';
-import { View, ScrollView } from 'react-native';
-import { Screen, H1, Input, Body, Muted, Card, Button, ErrorBanner } from '../src/components/primitives';
+import { View } from 'react-native';
+import { FormScreen, H1, Input, Body, Muted, Card, Button, ErrorBanner } from '../src/components/primitives';
 import { VoiceButton } from '../src/components/VoiceButton';
 import { useAsk } from '../src/hooks/useSemanticSearch';
 import { useHousehold } from '../src/lib/household';
@@ -25,9 +25,8 @@ export default function AskScreen() {
   );
 
   return (
-    <Screen>
-      <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: 12 }}>
-        <H1>{t('search.ask')}</H1>
+    <FormScreen contentContainerStyle={{ padding: spacing.lg, gap: 12 }}>
+      <H1>{t('search.ask')}</H1>
         <Input
           placeholder={t('search.askPlaceholder')}
           value={question}
@@ -66,7 +65,6 @@ export default function AskScreen() {
             ))}
           </View>
         ) : null}
-      </ScrollView>
-    </Screen>
+    </FormScreen>
   );
 }

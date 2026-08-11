@@ -1,8 +1,7 @@
 /** Join household via invite token (paste or scan). */
 import React, { useState } from 'react';
-import { ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
-import { H1, Muted, Input, Button, Screen, ErrorBanner } from '../../src/components/primitives';
+import { H1, Muted, Input, Button, FormScreen, ErrorBanner } from '../../src/components/primitives';
 import { spacing } from '../../src/theme';
 import { useHousehold } from '../../src/lib/household';
 import { errorMessage } from '../../src/lib/errors';
@@ -30,20 +29,18 @@ export default function JoinScreen() {
   }
 
   return (
-    <Screen>
-      <ScrollView contentContainerStyle={{ padding: spacing.xl, gap: 16 }}>
-        <H1>{t('household.join')}</H1>
-        <Muted>{t('household.joinPrompt')}</Muted>
-        <Input
-          placeholder={t('household.inviteTokenPh')}
-          value={token}
-          onChangeText={setToken}
-          autoCapitalize="none"
-          autoCorrect={false}
-        />
-        {error ? <ErrorBanner message={error} /> : null}
-        <Button title={t('household.join')} onPress={submit} loading={busy} disabled={!token.trim()} />
-      </ScrollView>
-    </Screen>
+    <FormScreen contentContainerStyle={{ padding: spacing.xl, gap: 16 }}>
+      <H1>{t('household.join')}</H1>
+      <Muted>{t('household.joinPrompt')}</Muted>
+      <Input
+        placeholder={t('household.inviteTokenPh')}
+        value={token}
+        onChangeText={setToken}
+        autoCapitalize="none"
+        autoCorrect={false}
+      />
+      {error ? <ErrorBanner message={error} /> : null}
+      <Button title={t('household.join')} onPress={submit} loading={busy} disabled={!token.trim()} />
+    </FormScreen>
   );
 }

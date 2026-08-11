@@ -4,8 +4,9 @@ import { View, Text, ScrollView, KeyboardAvoidingView, Platform } from 'react-na
 import { useRouter } from 'expo-router';
 import { H1, Muted, Input, Button, Screen } from '../../src/components/primitives';
 import { ErrorBanner } from '../../src/components/primitives';
-import { colors, spacing } from '../../src/theme';
+import { colors, spacing, tint } from '../../src/theme';
 import { useAuth } from '../../src/lib/auth';
+import { errorMessage } from '../../src/lib/errors';
 import { useTranslation } from 'react-i18next';
 
 export default function WelcomeScreen() {
@@ -36,7 +37,7 @@ export default function WelcomeScreen() {
         await signInWithPassword(email.trim(), password);
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(errorMessage(e));
     } finally {
       setBusy(false);
     }
@@ -74,7 +75,7 @@ export default function WelcomeScreen() {
 
           {error ? <ErrorBanner message={error} /> : null}
           {info ? (
-            <View style={{ backgroundColor: colors.success + '22', padding: 10, borderRadius: 8 }}>
+            <View style={{ backgroundColor: tint(colors.success), padding: 10, borderRadius: 8 }}>
               <Text style={{ color: colors.success }}>{info}</Text>
             </View>
           ) : null}

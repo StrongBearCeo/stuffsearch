@@ -4,7 +4,7 @@ import { ScrollView, Text, TouchableOpacity, Alert } from 'react-native';
 import { Screen, H1, H2, Muted, Card, Button } from '../src/components/primitives';
 import { useAuth } from '../src/lib/auth';
 import { setLanguage, LANGUAGES, type AppLanguage } from '../src/lib/i18n';
-import { colors, spacing, radius } from '../src/theme';
+import { colors, spacing, radius, tint } from '../src/theme';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../src/lib/supabase';
 import { useHeaderTitle } from '../src/lib/useHeaderTitle';
@@ -63,6 +63,8 @@ function LangRow({ label, active, onPress }: { label: string; active: boolean; o
   return (
     <TouchableOpacity
       onPress={onPress}
+      accessibilityRole="button"
+      accessibilityState={active ? { selected: true } : undefined}
       style={{
         flexDirection: 'row',
         alignItems: 'center',
@@ -70,7 +72,7 @@ function LangRow({ label, active, onPress }: { label: string; active: boolean; o
         paddingVertical: 10,
         paddingHorizontal: 12,
         borderRadius: radius.md,
-        backgroundColor: active ? colors.primary + '22' : 'transparent',
+        backgroundColor: active ? tint(colors.primary) : 'transparent',
       }}
     >
       <Text style={{ color: active ? colors.primary : colors.text, fontWeight: '600' }}>{label}</Text>

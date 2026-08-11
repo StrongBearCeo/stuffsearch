@@ -3,7 +3,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { ExpoImage } from './ExpoImage';
 import { Card, Body, Muted } from './primitives';
-import { colors } from '../theme';
+import { colors, tint } from '../theme';
 import type { Place } from '../lib/supabase';
 
 export function PlaceCard({
@@ -16,7 +16,13 @@ export function PlaceCard({
   onPress?: () => void;
 }) {
   return (
-    <TouchableOpacity onPress={onPress} disabled={!onPress}>
+    <TouchableOpacity
+      onPress={onPress}
+      disabled={!onPress}
+      accessibilityRole="button"
+      accessibilityLabel={place.name}
+      accessibilityHint={count != null ? `${count}` : undefined}
+    >
       <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
         <ExpoImage
           uri={place.photo_url}
@@ -29,7 +35,7 @@ export function PlaceCard({
         {count != null ? (
           <View
             style={{
-              backgroundColor: colors.primary + '22',
+              backgroundColor: tint(colors.primary),
               paddingHorizontal: 8,
               paddingVertical: 2,
               borderRadius: 6,

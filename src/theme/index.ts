@@ -17,8 +17,17 @@ export const colors = {
   danger: '#ef4444',
 } as const;
 
-export const radius = { sm: 6, md: 10, lg: 16, xl: 24 } as const;
+export const radius = { sm: 6, md: 10, mdLg: 12, lg: 16, xl: 24 } as const;
 export const spacing = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24 } as const;
+
+/**
+ * Produce a translucent variant of a 6-digit hex color by appending an alpha
+ * hex pair. Centralizes the fragile `colors.x + '22'` pattern so tints are
+ * typed and discoverable. `alpha` is a hex string like '22', '33', '44'.
+ */
+export function tint(hex: string, alpha: '22' | '33' | '44' | '66' = '22'): string {
+  return hex + alpha;
+}
 
 /** Tailwind/NativeWind breakpoint helpers (tablet ≥ 768). */
 export const tabletBreakpoint = 768;

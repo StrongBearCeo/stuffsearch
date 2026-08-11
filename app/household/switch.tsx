@@ -4,7 +4,7 @@ import { View, ScrollView, Text, TouchableOpacity } from 'react-native';
 import { router } from 'expo-router';
 import { Screen, H1, Card } from '../../src/components/primitives';
 import { useHousehold } from '../../src/lib/household';
-import { colors, spacing, radius } from '../../src/theme';
+import { colors, spacing, radius, tint } from '../../src/theme';
 import { useTranslation } from 'react-i18next';
 import { useHeaderTitle } from '../../src/lib/useHeaderTitle';
 import { hapticSuccess } from '../../src/lib/haptics';
@@ -27,6 +27,9 @@ export default function SwitchHouseholdScreen() {
                 hapticSuccess();
                 router.back();
               }}
+              accessibilityRole="button"
+              accessibilityLabel={`${m.households.name}, ${m.role === 'owner' ? t('household.owner') : t('household.member')}`}
+              accessibilityState={active ? { selected: true } : undefined}
             >
               <Card style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                 <View>
@@ -37,7 +40,7 @@ export default function SwitchHouseholdScreen() {
                 </View>
                 <View
                   style={{
-                    backgroundColor: active ? colors.primary + '33' : colors.surfaceAlt,
+                    backgroundColor: active ? tint(colors.primary, '33') : colors.surfaceAlt,
                     paddingHorizontal: 10,
                     paddingVertical: 4,
                     borderRadius: radius.sm,

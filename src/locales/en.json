@@ -73,6 +73,7 @@
     "description": "Description",
     "category": "Category",
     "location": "Location",
+    "located": "Located",
     "notLocated": "Not in a place",
     "history": "History",
     "boundCodes": "Codes",

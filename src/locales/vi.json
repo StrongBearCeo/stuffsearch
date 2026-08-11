@@ -73,6 +73,7 @@
     "description": "Mô tả",
     "category": "Danh mục",
     "location": "Vị trí",
+    "located": "Đã để nơi",
     "notLocated": "Chưa để vào nơi nào",
     "history": "Lịch sử",
     "boundCodes": "Mã",

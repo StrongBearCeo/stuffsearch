@@ -57,9 +57,14 @@ function QuickActions() {
 
 function ActionTile({ emoji, label, onPress }: { emoji: string; label: string; onPress: () => void }) {
   return (
-    <TouchableOpacity onPress={onPress} style={{ flex: 1 }}>
+    <TouchableOpacity
+      onPress={onPress}
+      style={{ flex: 1 }}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+    >
       <Card style={{ alignItems: 'center', gap: 4, paddingVertical: 14 }}>
-        <Text style={{ fontSize: 22 }}>{emoji}</Text>
+        <Text style={{ fontSize: 22 }} accessibilityLabel={undefined}>{emoji}</Text>
         <Text style={{ color: colors.text, fontSize: 11, fontWeight: '600' }}>{label}</Text>
       </Card>
     </TouchableOpacity>

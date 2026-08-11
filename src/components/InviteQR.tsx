@@ -3,7 +3,7 @@ import React from 'react';
 import { View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import { buildDeepLink } from '../lib/constants';
-import { colors } from '../theme';
+import { colors, radius } from '../theme';
 
 export function InviteQR({ inviteToken }: { inviteToken: string }) {
   const payload = buildDeepLink('invite', inviteToken);
@@ -12,7 +12,7 @@ export function InviteQR({ inviteToken }: { inviteToken: string }) {
       style={{
         backgroundColor: '#fff',
         padding: 12,
-        borderRadius: 12,
+        borderRadius: radius.mdLg,
         alignSelf: 'center',
       }}
     >

@@ -6,16 +6,50 @@ import {
   TextInput,
   TouchableOpacity,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
   type ViewProps,
   type TextProps,
   type TextInputProps,
   type TouchableOpacityProps,
+  type ScrollViewProps,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { colors, radius } from '../theme';
+import { colors, radius, tint } from '../theme';
 
 export function Screen({ style, children }: { style?: ViewProps['style']; children: React.ReactNode }) {
   return <View style={[{ flex: 1, backgroundColor: colors.bg }, style]}>{children}</View>;
+}
+
+/** A keyboard-aware form container. Wraps a ScrollView in a KeyboardAvoidingView
+ * so inputs (and the Save button beneath them) stay visible when the soft
+ * keyboard opens. Use this in place of `<Screen><ScrollView>` on form screens.
+ * Pass the same `contentContainerStyle` you'd give a ScrollView. */
+export function FormScreen({
+  children,
+  contentContainerStyle,
+  style,
+}: {
+  children: React.ReactNode;
+  contentContainerStyle?: ScrollViewProps['contentContainerStyle'];
+  style?: ViewProps['style'];
+}) {
+  return (
+    <Screen style={style}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={{ flex: 1 }}
+        // On Android, the window resize mode handles most cases; this keeps
+        // the content scrollable when the keyboard would otherwise cover it.
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+      >
+        <ScrollView contentContainerStyle={contentContainerStyle} keyboardShouldPersistTaps="handled">
+          {children}
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </Screen>
+  );
 }
 
 export function Card({ style, children }: { style?: ViewProps['style']; children: React.ReactNode }) {
@@ -161,7 +195,7 @@ export function ListSkeleton({ rows = 4 }: { rows?: number }) {
 export function ErrorBanner({ message }: { message: string }) {
   const { t } = useTranslation();
   return (
-    <View style={{ backgroundColor: colors.danger + '22', padding: 10, borderRadius: radius.md }}>
+    <View style={{ backgroundColor: tint(colors.danger), padding: 10, borderRadius: radius.md }}>
       <Text style={{ color: colors.danger }}>
         {t('errors.generic')} {message}
       </Text>

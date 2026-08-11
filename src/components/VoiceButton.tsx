@@ -19,6 +19,9 @@ export function VoiceButton({
     <View style={{ gap: 4 }}>
       <TouchableOpacity
         onPress={() => (listening ? stop() : start(onResult))}
+        accessibilityRole="button"
+        accessibilityLabel={listening ? t('search.listening') : t('search.voice')}
+        accessibilityHint={t('search.voice')}
         style={{
           flexDirection: 'row',
           alignItems: 'center',

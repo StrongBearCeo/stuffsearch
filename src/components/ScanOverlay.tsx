@@ -4,10 +4,12 @@ import { View, Text } from 'react-native';
 import { colors, radius } from '../theme';
 import { useUiStore } from '../store/ui';
 import { useTranslation } from 'react-i18next';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export function ScanOverlay() {
   const { activePlaceId, activePlaceName } = useUiStore();
   const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
   return (
     <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
       {/* Corner brackets */}
@@ -26,8 +28,10 @@ export function ScanOverlay() {
       />
       <View
         style={{
+          // Sit above the manual-entry button: home-indicator inset + button
+          // height (~48) + the button's own 16px bottom margin + a gap.
           position: 'absolute',
-          bottom: 40,
+          bottom: insets.bottom + 76,
           left: 16,
           right: 16,
           alignItems: 'center',

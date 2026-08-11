@@ -1,8 +1,8 @@
 /** BoundCodesList — shows external codes bound to an entity, with unbind. */
 import React from 'react';
-import { View, Text, TouchableOpacity, FlatList } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import { Card, H2, Muted, EmptyState } from './primitives';
-import { colors, radius } from '../theme';
+import { colors, radius, tint } from '../theme';
 import type { ExternalCode } from '../lib/supabase';
 import { useTranslation } from 'react-i18next';
 
@@ -20,34 +20,37 @@ export function BoundCodesList({
       {codes.length === 0 ? (
         <EmptyState title={t('common.empty')} />
       ) : (
-        <FlatList
-          data={codes}
-          keyExtractor={(c) => c.id}
-          renderItem={({ item }) => (
-            <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <View style={{ flex: 1 }}>
-                <Text style={{ color: colors.text, fontFamily: 'monospace' }}>{item.code_value}</Text>
-                <Muted style={{ fontSize: 11 }}>
-                  {item.code_type}
-                  {item.label ? ` · ${item.label}` : ''}
-                </Muted>
-              </View>
-              {onUnbind ? (
-                <TouchableOpacity
-                  onPress={() => onUnbind(item)}
-                  style={{
-                    paddingHorizontal: 8,
-                    paddingVertical: 4,
-                    borderRadius: radius.sm,
-                    backgroundColor: colors.danger + '22',
-                  }}
-                >
-                  <Text style={{ color: colors.danger, fontSize: 12 }}>{t('codes.unbind')}</Text>
-                </TouchableOpacity>
-              ) : null}
-            </Card>
-          )}
-        />
+        // Render rows directly rather than via <FlatList>: bound-code lists are
+        // small, and a VirtualizedList nested in a same-orientation ScrollView
+        // breaks windowing (RN logs "VirtualizedLists should never be nested
+        // inside plain ScrollViews"). The enclosing detail screens scroll.
+        codes.map((item) => (
+          <Card key={item.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: colors.text, fontFamily: 'monospace' }}>{item.code_value}</Text>
+              <Muted style={{ fontSize: 11 }}>
+                {item.code_type}
+                {item.label ? ` · ${item.label}` : ''}
+              </Muted>
+            </View>
+            {onUnbind ? (
+              <TouchableOpacity
+                onPress={() => onUnbind(item)}
+                hitSlop={{ top: 10, bottom: 10, left: 4, right: 4 }}
+                accessibilityRole="button"
+                accessibilityLabel={`${t('codes.unbind')}, ${item.code_value}`}
+                style={{
+                  paddingHorizontal: 10,
+                  paddingVertical: 8,
+                  borderRadius: radius.sm,
+                  backgroundColor: tint(colors.danger),
+                }}
+              >
+                <Text style={{ color: colors.danger, fontSize: 12 }}>{t('codes.unbind')}</Text>
+              </TouchableOpacity>
+            ) : null}
+          </Card>
+        ))
       )}
     </View>
   );

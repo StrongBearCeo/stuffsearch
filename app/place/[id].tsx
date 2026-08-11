@@ -11,7 +11,7 @@ import { useExternalCodes, useUnbindExternalCode } from '../../src/hooks/useExte
 import { useHousehold } from '../../src/lib/household';
 import type { Item } from '../../src/lib/supabase';
 import { useUiStore } from '../../src/store/ui';
-import { spacing } from '../../src/theme';
+import { spacing, radius } from '../../src/theme';
 import { useTranslation } from 'react-i18next';
 import { useHeaderTitle } from '../../src/lib/useHeaderTitle';
 import { hapticSuccess, hapticWarning } from '../../src/lib/haptics';
@@ -70,7 +70,7 @@ export default function PlaceDetailScreen() {
     <Screen>
       <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: 12, paddingBottom: 40 }}>
         {place.photo_url ? (
-          <ExpoImage uri={place.photo_url} style={{ width: '100%', height: 180, borderRadius: 12 }} />
+          <ExpoImage uri={place.photo_url} style={{ width: '100%', height: 180, borderRadius: radius.mdLg }} />
         ) : null}
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
           <View style={{ flex: 1 }}>

@@ -1,9 +1,9 @@
 /** Create or edit an item. Supports a prefilled external code (from scan) and
  * optional LLM enrichment. When `id` param is present, edits that item. */
 import React, { useEffect, useState } from 'react';
-import { ScrollView, Text } from 'react-native';
+import { Text } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Screen, H1, Input, Muted, Card, Button, ErrorBanner } from '../../src/components/primitives';
+import { FormScreen, H1, Input, Muted, Card, Button, ErrorBanner } from '../../src/components/primitives';
 import { useCreateItem, useUpdateItem, useItem } from '../../src/hooks/useItems';
 import { useBindExternalCode } from '../../src/hooks/useExternalCode';
 import { useHousehold } from '../../src/lib/household';
@@ -118,9 +118,8 @@ export default function NewItemScreen() {
   }
 
   return (
-    <Screen>
-      <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: 12 }}>
-        <H1>{editing ? t('common.edit') : t('items.new')}</H1>
+    <FormScreen contentContainerStyle={{ padding: spacing.lg, gap: 12 }}>
+      <H1>{editing ? t('common.edit') : t('items.new')}</H1>
         {params.code ? (
           <Card>
             <Muted>{t('codes.value')}</Muted>
@@ -144,13 +143,12 @@ export default function NewItemScreen() {
         ) : null}
 
         {error ? <ErrorBanner message={error} /> : null}
-        <Button
-          title={t('common.save')}
-          onPress={onSave}
-          loading={createItem.isPending || updateItem.isPending}
-          disabled={name.trim().length === 0}
-        />
-      </ScrollView>
-    </Screen>
+      <Button
+        title={t('common.save')}
+        onPress={onSave}
+        loading={createItem.isPending || updateItem.isPending}
+        disabled={name.trim().length === 0}
+      />
+    </FormScreen>
   );
 }

@@ -3,7 +3,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Card, Muted } from './primitives';
-import { colors, radius } from '../theme';
+import { colors, radius, tint } from '../theme';
 import { useHousehold } from '../lib/household';
 import { useTranslation } from 'react-i18next';
 
@@ -49,7 +49,7 @@ export function HouseholdSwitcher() {
                   paddingVertical: 4,
                   paddingHorizontal: 10,
                   borderRadius: radius.sm,
-                  backgroundColor: active ? colors.primary + '33' : colors.surfaceAlt,
+                  backgroundColor: active ? tint(colors.primary, '33') : colors.surfaceAlt,
                   marginRight: 6,
                   borderWidth: 1,
                   borderColor: active ? colors.primary : colors.border,

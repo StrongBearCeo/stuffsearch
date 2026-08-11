@@ -1,6 +1,6 @@
 /** Scan tab: live camera + resolution state machine. */
 import React, { useEffect, useState } from 'react';
-import { View, Modal } from 'react-native';
+import { View, Modal, KeyboardAvoidingView, Platform } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useRouter } from 'expo-router';
 import { Screen, Button, Input, Card, Body, Muted, H2 } from '../../src/components/primitives';
@@ -13,6 +13,7 @@ import { useHousehold } from '../../src/lib/household';
 import { colors } from '../../src/theme';
 import { useTranslation } from 'react-i18next';
 import { hapticSuccess } from '../../src/lib/haptics';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { ExternalCodeType } from '../../src/lib/supabase';
 
 export default function ScanScreen() {
@@ -21,6 +22,7 @@ export default function ScanScreen() {
   const { resolve, reset, outcome } = useScan();
   const { activeHousehold } = useHousehold();
   const { activePlaceId, activePlaceName } = useUiStore();
+  const insets = useSafeAreaInsets();
 
   const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
@@ -123,7 +125,7 @@ export default function ScanScreen() {
         />
         <ScanOverlay />
         {prompt ? (
-          <View style={{ position: 'absolute', top: 60, left: 16, right: 16 }}>
+          <View style={{ position: 'absolute', top: insets.top + 12, left: 16, right: 16 }}>
             <Card>
               <Body style={{ fontWeight: '600' }}>{prompt}</Body>
               <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
@@ -132,13 +134,17 @@ export default function ScanScreen() {
             </Card>
           </View>
         ) : null}
-        <View style={{ position: 'absolute', bottom: 16, left: 16, right: 16, gap: 8 }}>
+        <View style={{ position: 'absolute', bottom: insets.bottom + 16, left: 16, right: 16, gap: 8 }}>
           <Button title={t('scan.manualEntry')} variant="ghost" onPress={() => setManualOpen(true)} />
         </View>
       </View>
 
       <Modal visible={manualOpen} transparent animationType="slide" onRequestClose={() => setManualOpen(false)}>
-        <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' }}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={{ flex: 1, justifyContent: 'flex-end' }}
+        >
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' }} />
           <View style={{ backgroundColor: colors.bg, padding: 20, gap: 12, borderTopLeftRadius: 24, borderTopRightRadius: 24 }}>
             <H2>{t('scan.enterCode')}</H2>
             <Input value={manual} onChangeText={setManual} autoCapitalize="none" />
@@ -153,7 +159,7 @@ export default function ScanScreen() {
             />
             <Button title={t('common.cancel')} variant="ghost" onPress={() => setManualOpen(false)} />
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {create ? (

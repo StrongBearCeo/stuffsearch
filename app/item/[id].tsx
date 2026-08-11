@@ -10,7 +10,7 @@ import { usePlaces } from '../../src/hooks/usePlaces';
 import { useExternalCodes, useUnbindExternalCode } from '../../src/hooks/useExternalCode';
 import { useHousehold } from '../../src/lib/household';
 import type { Place, ItemHistory } from '../../src/lib/supabase';
-import { colors, spacing } from '../../src/theme';
+import { colors, spacing, radius, tint } from '../../src/theme';
 import { useTranslation } from 'react-i18next';
 import { useHeaderTitle } from '../../src/lib/useHeaderTitle';
 import { hapticWarning } from '../../src/lib/haptics';
@@ -76,7 +76,7 @@ export default function ItemDetailScreen() {
     <Screen>
       <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: 12, paddingBottom: 40 }}>
         {item.photo_urls?.[0] ? (
-          <ExpoImage uri={item.photo_urls[0]} style={{ width: '100%', height: 220, borderRadius: 12 }} />
+          <ExpoImage uri={item.photo_urls[0]} style={{ width: '100%', height: 220, borderRadius: radius.mdLg }} />
         ) : null}
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
           <View style={{ flex: 1 }}>
@@ -136,7 +136,7 @@ export default function ItemDetailScreen() {
 
 function PlaceOption({ label, onPress, selected }: { label: string; onPress: () => void; selected?: boolean }) {
   return (
-    <TouchableOpacity onPress={onPress} style={{ paddingVertical: 8, paddingHorizontal: 12, backgroundColor: selected ? colors.primary + '33' : colors.surfaceAlt, borderRadius: 6 }}>
+    <TouchableOpacity onPress={onPress} style={{ paddingVertical: 8, paddingHorizontal: 12, backgroundColor: selected ? tint(colors.primary, '33') : colors.surfaceAlt, borderRadius: radius.sm }}>
       <Text style={{ color: selected ? colors.primary : colors.text }}>{label}</Text>
     </TouchableOpacity>
   );

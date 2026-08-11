@@ -3,14 +3,21 @@ import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { ExpoImage } from './ExpoImage';
 import { Card, Body, Muted } from './primitives';
-import { colors } from '../theme';
+import { colors, tint } from '../theme';
 import type { Item } from '../lib/supabase';
 import { useTranslation } from 'react-i18next';
 
 export function ItemCard({ item, onPress }: { item: Item; onPress?: () => void }) {
   const { t } = useTranslation();
+  const located = !!item.current_place_id;
   return (
-    <TouchableOpacity onPress={onPress} disabled={!onPress}>
+    <TouchableOpacity
+      onPress={onPress}
+      disabled={!onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`${item.name}${item.category ? `, ${item.category}` : ''}`}
+      accessibilityHint={located ? t('items.located') : t('items.notLocated')}
+    >
       <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
         <ExpoImage
           uri={item.photo_urls?.[0]}
@@ -21,10 +28,10 @@ export function ItemCard({ item, onPress }: { item: Item; onPress?: () => void }
           {item.category ? <Muted>{item.category}</Muted> : null}
         </View>
         <View style={{ alignItems: 'flex-end' }}>
-          {item.current_place_id ? (
-            <View style={{ backgroundColor: colors.success + '22', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 }}>
+          {located ? (
+            <View style={{ backgroundColor: tint(colors.success), paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 }}>
               <Text style={{ color: colors.success, fontSize: 11, fontWeight: '600' }}>
-                {t('items.location').toUpperCase()}
+                {t('items.located')}
               </Text>
             </View>
           ) : (

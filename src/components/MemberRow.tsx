@@ -2,7 +2,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Card } from './primitives';
-import { colors, radius } from '../theme';
+import { colors, radius, tint } from '../theme';
 import type { MemberWithProfile } from '../hooks/useMembers';
 import { useTranslation } from 'react-i18next';
 
@@ -25,7 +25,7 @@ export function MemberRow({
           width: 36,
           height: 36,
           borderRadius: 18,
-          backgroundColor: colors.primary + '33',
+          backgroundColor: tint(colors.primary, '33'),
           alignItems: 'center',
           justifyContent: 'center',
         }}
@@ -47,9 +47,12 @@ export function MemberRow({
           {onTransfer ? (
             <TouchableOpacity
               onPress={onTransfer}
+              hitSlop={{ top: 10, bottom: 10, left: 4, right: 4 }}
+              accessibilityRole="button"
+              accessibilityLabel={`${t('household.transferOwnership')}, ${member.profiles?.display_name ?? member.user_id.slice(0, 8)}`}
               style={{
-                paddingHorizontal: 8,
-                paddingVertical: 4,
+                paddingHorizontal: 10,
+                paddingVertical: 8,
                 borderRadius: radius.sm,
                 backgroundColor: colors.surfaceAlt,
               }}
@@ -62,11 +65,14 @@ export function MemberRow({
           {onRemove ? (
             <TouchableOpacity
               onPress={onRemove}
+              hitSlop={{ top: 10, bottom: 10, left: 4, right: 4 }}
+              accessibilityRole="button"
+              accessibilityLabel={`${t('common.delete')}, ${member.profiles?.display_name ?? member.user_id.slice(0, 8)}`}
               style={{
-                paddingHorizontal: 8,
-                paddingVertical: 4,
+                paddingHorizontal: 10,
+                paddingVertical: 8,
                 borderRadius: radius.sm,
-                backgroundColor: colors.danger + '22',
+                backgroundColor: tint(colors.danger),
               }}
             >
               <Text style={{ color: colors.danger, fontSize: 12 }}>{t('common.delete')}</Text>

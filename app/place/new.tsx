@@ -1,8 +1,8 @@
 /** Create or edit a place. Supports a prefilled external code (from scan). */
 import React, { useEffect, useState } from 'react';
-import { ScrollView, Text } from 'react-native';
+import { Text } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Screen, H1, Input, Muted, Card, Button, ErrorBanner } from '../../src/components/primitives';
+import { FormScreen, H1, Input, Muted, Card, Button, ErrorBanner } from '../../src/components/primitives';
 import { useCreatePlace, useUpdatePlace, usePlace } from '../../src/hooks/usePlaces';
 import { useBindExternalCode } from '../../src/hooks/useExternalCode';
 import { useHousehold } from '../../src/lib/household';
@@ -79,32 +79,30 @@ export default function NewPlaceScreen() {
   const nameEmpty = name.trim().length === 0;
 
   return (
-    <Screen>
-      <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: 12 }}>
-        <H1>{editing ? t('common.edit') : t('places.new')}</H1>
-        {params.code ? (
-          <Card>
-            <Muted>{t('codes.value')}</Muted>
-            <Text style={{ color: '#fff', fontFamily: 'monospace' }}>{params.code}</Text>
-          </Card>
-        ) : null}
-        <Input placeholder={t('places.name')} value={name} onChangeText={setName} />
-        <Input
-          placeholder={t('places.description')}
-          value={description}
-          onChangeText={setDescription}
-          multiline
-          numberOfLines={3}
-          style={{ minHeight: 80 }}
-        />
-        {error ? <ErrorBanner message={error} /> : null}
-        <Button
-          title={t('common.save')}
-          onPress={onSave}
-          loading={createPlace.isPending || updatePlace.isPending}
-          disabled={nameEmpty}
-        />
-      </ScrollView>
-    </Screen>
+    <FormScreen contentContainerStyle={{ padding: spacing.lg, gap: 12 }}>
+      <H1>{editing ? t('common.edit') : t('places.new')}</H1>
+      {params.code ? (
+        <Card>
+          <Muted>{t('codes.value')}</Muted>
+          <Text style={{ color: '#fff', fontFamily: 'monospace' }}>{params.code}</Text>
+        </Card>
+      ) : null}
+      <Input placeholder={t('places.name')} value={name} onChangeText={setName} />
+      <Input
+        placeholder={t('places.description')}
+        value={description}
+        onChangeText={setDescription}
+        multiline
+        numberOfLines={3}
+        style={{ minHeight: 80 }}
+      />
+      {error ? <ErrorBanner message={error} /> : null}
+      <Button
+        title={t('common.save')}
+        onPress={onSave}
+        loading={createPlace.isPending || updatePlace.isPending}
+        disabled={nameEmpty}
+      />
+    </FormScreen>
   );
 }
