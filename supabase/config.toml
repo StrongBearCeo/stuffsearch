@@ -1,0 +1,55 @@
+project_id = "dkbhzfcznwxfumfcaifs"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 15
+
+[studio]
+enabled = true
+port = 54323
+
+[inbucket]
+enabled = true
+port = 54324
+
+[storage]
+enabled = true
+file_size_limit = "50MiB"
+
+[auth]
+enabled = true
+site_url = "stuffsearch://"
+additional_redirect_urls = ["exp://localhost:8081", "stuffsearch://"]
+jwt_expiry = 3600
+refresh_token_rotation_enabled = true
+refresh_token_reuse_interval = 10
+enable_signup = true
+enable_anonymous_sign_ins = false
+
+[auth.email]
+enable_signup = true
+double_confirm_changes = true
+enable_confirmations = true
+template = {}
+
+[functions]
+# Edge Functions run on Deno; verify_jwt lets us call them while keeping
+# per-request auth checks inside the function itself.
+verify_jwt = false
+
+[functions.enrich-item]
+verify_jwt = true
+[functions.product-lookup]
+verify_jwt = true
+[functions.semantic-search]
+verify_jwt = true
+[functions.ask-llm]
+verify_jwt = true
