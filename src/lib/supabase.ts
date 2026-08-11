@@ -4,7 +4,8 @@
  * Reads EXPO_PUBLIC_* env vars (bundled into the app). The service-role key is
  * NEVER referenced here — it lives only in Edge Function secrets.
  */
-import 'react-native-url-polyfill/auto';
+// RN 0.81 ships a complete WHATWG URL implementation; the
+// react-native-url-polyfill/auto side-effect import is no longer needed.
 import { createClient } from '@supabase/supabase-js';
 import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';

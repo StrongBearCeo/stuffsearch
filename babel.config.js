@@ -1,24 +1,11 @@
 module.exports = function (api) {
   api.cache(true);
   return {
-    presets: [
-      // NativeWind v2 does NOT use jsxImportSource (that's v3). Plain preset.
-      'babel-preset-expo',
-    ],
+    presets: ['babel-preset-expo'],
     plugins: [
-      // nativewind/babel is a PLUGIN (exports a visitor fn), not a preset.
-      // It must live under plugins, and reanimated/plugin must be last.
-      'nativewind/babel',
-      [
-        'module-resolver',
-        {
-          root: ['.'],
-          alias: {
-            '@': './src',
-            '@app': './app',
-          },
-        },
-      ],
+      // Path aliases (@/*, @app/*) resolve via experiments.tsconfigPaths in
+      // app.config.ts + tsconfig paths — no babel module-resolver needed.
+      // react-native-reanimated/plugin must remain LAST.
       'react-native-reanimated/plugin',
     ],
   };

@@ -72,6 +72,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         microphonePermission: false,
       },
     ],
+    // SDK 54 requires the expo-secure-store plugin declaration for SecureStore
+    // to function (used by the Supabase auth-session storage adapter).
+    'expo-secure-store',
     [
       'expo-build-properties',
       {

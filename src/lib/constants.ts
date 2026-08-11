@@ -23,7 +23,7 @@ export function buildDeepLink(
   return `${APP_SCHEME}://${kind}/${token}${h}`;
 }
 
-/** Map an expo-barcode-scanner `type` string to our external_code_type enum. */
+/** Map an expo-camera `CameraView` onBarcodeScanned `type` string to our external_code_type enum. */
 export function scannerTypeToCodeType(type: string): ExternalCodeType {
   const t = type.toLowerCase();
   if (t.includes('qr')) return 'qr';

@@ -13,7 +13,7 @@ import type { SupportedLanguage } from './supabase';
 type SRModule = typeof import('@jamsch/expo-speech-recognition');
 let mod: SRModule | null = null;
 try {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   mod = require('@jamsch/expo-speech-recognition');
 } catch {
   mod = null;

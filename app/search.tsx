@@ -9,8 +9,14 @@ import { useItems } from '../src/hooks/useItems';
 import { useSemanticSearch } from '../src/hooks/useSemanticSearch';
 import { useHousehold } from '../src/lib/household';
 import { useAuth } from '../src/lib/auth';
+import type { Item } from '../src/lib/supabase';
+import type { SemanticSearchResult } from '../src/lib/llm';
 import { spacing } from '../src/theme';
 import { useTranslation } from 'react-i18next';
+
+/** A single search result row — either a full Item (text search) or a semantic hit. */
+type SearchRow = Item | SemanticSearchResult;
+const isSemantic = (r: SearchRow): r is SemanticSearchResult => 'item_id' in r;
 
 export default function SearchScreen() {
   const { t } = useTranslation();
@@ -36,12 +42,12 @@ export default function SearchScreen() {
           <VoiceButton language={profile?.default_language ?? 'en'} onResult={setQ} />
         </View>
       </View>
-      <FlatList
+      <FlatList<SearchRow>
         data={showSemantic ? semantic.data ?? [] : text.data ?? []}
-        keyExtractor={(i) => ('item_id' in i ? i.item_id : i.id)}
+        keyExtractor={(i) => (isSemantic(i) ? i.item_id : i.id)}
         renderItem={({ item }) => {
           // semantic results have item_id + score; text results are Item rows.
-          if ('item_id' in item) {
+          if (isSemantic(item)) {
             return (
               <View style={{ paddingHorizontal: spacing.lg, marginBottom: 8 }}>
                 <Card>

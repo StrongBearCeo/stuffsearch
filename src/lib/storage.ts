@@ -1,5 +1,7 @@
 /** Storage upload helper for item / place photos. */
-import * as FileSystem from 'expo-file-system';
+// SDK 54 moved the classic FileSystem API to /legacy (the top-level exports
+// are now deprecation stubs that throw at runtime).
+import * as FileSystem from 'expo-file-system/legacy';
 import { supabase, STORAGE_BUCKET } from './supabase';
 import { storagePath } from './constants';
 

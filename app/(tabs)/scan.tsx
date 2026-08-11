@@ -99,7 +99,25 @@ export default function ScanScreen() {
         <CameraView
           style={{ flex: 1 }}
           onBarcodeScanned={(e) => handle(e.data, e.type)}
-          {...({ barcodeScannerEnabled: true } as object)}
+          barcodeScannerSettings={{
+            // SDK 54 replaced barcodeScannerEnabled with an explicit allow-list.
+            // Cover QR + the common retail/industrial symbologies.
+            barcodeTypes: [
+              'qr',
+              'ean13',
+              'ean8',
+              'upc_a',
+              'upc_e',
+              'code128',
+              'code39',
+              'code93',
+              'codabar',
+              'itf14',
+              'pdf417',
+              'aztec',
+              'datamatrix',
+            ],
+          }}
         />
         <ScanOverlay />
         {prompt ? (
