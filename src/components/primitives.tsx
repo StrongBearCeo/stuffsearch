@@ -16,16 +16,31 @@ import {
   type ScrollViewProps,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { useWindowDimensions } from 'react-native';
 import { colors, radius, tint } from '../theme';
+import { CONTENT_MAX_WIDTH } from '../hooks/useResponsive';
 
 export function Screen({ style, children }: { style?: ViewProps['style']; children: React.ReactNode }) {
   return <View style={[{ flex: 1, backgroundColor: colors.bg }, style]}>{children}</View>;
 }
 
+/** Centers children within CONTENT_MAX_WIDTH. Drop this directly inside a
+ * ScrollView's content to cap detail/home/household screens in landscape so
+ * their content doesn't stretch edge-to-edge across the wide viewport. */
+export function MaxWidth({ children, style }: { children: React.ReactNode; style?: ViewProps['style'] }) {
+  const { width } = useWindowDimensions();
+  return (
+    <View style={[{ width: Math.min(width, CONTENT_MAX_WIDTH), alignSelf: 'center' }, style]}>{children}</View>
+  );
+}
+
 /** A keyboard-aware form container. Wraps a ScrollView in a KeyboardAvoidingView
  * so inputs (and the Save button beneath them) stay visible when the soft
  * keyboard opens. Use this in place of `<Screen><ScrollView>` on form screens.
- * Pass the same `contentContainerStyle` you'd give a ScrollView. */
+ * Pass the same `contentContainerStyle` you'd give a ScrollView.
+ *
+ * Content is capped to CONTENT_MAX_WIDTH and centered, so in landscape inputs
+ * and buttons don't stretch across the full width. */
 export function FormScreen({
   children,
   contentContainerStyle,
@@ -35,6 +50,12 @@ export function FormScreen({
   contentContainerStyle?: ScrollViewProps['contentContainerStyle'];
   style?: ViewProps['style'];
 }) {
+  // Cap content width in landscape. We compute the literal width here rather
+  // than relying on maxWidth inside a ScrollView: in RN, a child with
+  // width:'100%' inside a ScrollView resolves to the (unbounded) content
+  // width, so maxWidth is never hit. A measured literal width works.
+  const { width } = useWindowDimensions();
+  const contentWidth = Math.min(width, CONTENT_MAX_WIDTH);
   return (
     <Screen style={style}>
       <KeyboardAvoidingView
@@ -44,8 +65,11 @@ export function FormScreen({
         // the content scrollable when the keyboard would otherwise cover it.
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
       >
-        <ScrollView contentContainerStyle={contentContainerStyle} keyboardShouldPersistTaps="handled">
-          {children}
+        <ScrollView
+          contentContainerStyle={[{ alignItems: 'center' }, contentContainerStyle]}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={{ width: contentWidth }}>{children}</View>
         </ScrollView>
       </KeyboardAvoidingView>
     </Screen>

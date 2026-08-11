@@ -5,12 +5,14 @@ import { useRouter } from 'expo-router';
 import { Screen, Input, EmptyState, ErrorBanner, Button, H1, ListSkeleton } from '../../src/components/primitives';
 import { PlaceCard } from '../../src/components/PlaceCard';
 import { usePlaces } from '../../src/hooks/usePlaces';
+import { useResponsive } from '../../src/hooks/useResponsive';
 import { spacing, colors } from '../../src/theme';
 import { useTranslation } from 'react-i18next';
 
 export default function PlacesScreen() {
   const { t } = useTranslation();
   const router = useRouter();
+  const { columns } = useResponsive();
   const [q, setQ] = useState('');
   const { data, isLoading, error, refetch, isFetching } = usePlaces(q);
   return (
@@ -22,9 +24,11 @@ export default function PlacesScreen() {
       </View>
       <FlatList
         data={data ?? []}
+        key={`cols-${columns}`}
+        numColumns={columns}
         keyExtractor={(p) => p.id}
         renderItem={({ item }) => (
-          <View style={{ paddingHorizontal: spacing.lg, marginBottom: 8 }}>
+          <View style={{ flex: 1 / columns, padding: spacing.sm }}>
             <PlaceCard place={item} onPress={() => router.push(`/place/${item.id}`)} />
           </View>
         )}
@@ -37,7 +41,7 @@ export default function PlacesScreen() {
             <EmptyState title={t('places.empty')} />
           )
         }
-        contentContainerStyle={{ paddingBottom: spacing.xl }}
+        contentContainerStyle={{ paddingHorizontal: spacing.sm, paddingBottom: spacing.xl }}
         refreshControl={<RefreshControl refreshing={isFetching} onRefresh={refetch} tintColor={colors.textMuted} />}
       />
     </Screen>

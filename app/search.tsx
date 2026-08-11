@@ -7,6 +7,7 @@ import { ItemCard } from '../src/components/ItemCard';
 import { VoiceButton } from '../src/components/VoiceButton';
 import { useItems } from '../src/hooks/useItems';
 import { useSemanticSearch } from '../src/hooks/useSemanticSearch';
+import { useResponsive } from '../src/hooks/useResponsive';
 import { useHousehold } from '../src/lib/household';
 import { useAuth } from '../src/lib/auth';
 import type { Item } from '../src/lib/supabase';
@@ -25,6 +26,7 @@ export default function SearchScreen() {
   const { activeHouseholdId } = useHousehold();
   const { profile } = useAuth();
   const [q, setQ] = useState('');
+  const { columns } = useResponsive();
   useHeaderTitle(t('search.title'));
 
   // Text search is local + fast; semantic search is LLM-backed.
@@ -46,12 +48,15 @@ export default function SearchScreen() {
       </View>
       <FlatList<SearchRow>
         data={showSemantic ? semantic.data ?? [] : text.data ?? []}
+        key={`cols-${columns}`}
+        numColumns={columns}
         keyExtractor={(i) => (isSemantic(i) ? i.item_id : i.id)}
         renderItem={({ item }) => {
+          const cellStyle = { flex: 1 / columns, padding: spacing.sm };
           // semantic results have item_id + score; text results are Item rows.
           if (isSemantic(item)) {
             return (
-              <View style={{ paddingHorizontal: spacing.lg, marginBottom: 8 }}>
+              <View style={cellStyle}>
                 <Card>
                   <Body style={{ fontWeight: '600' }}>{item.name}</Body>
                   <Muted>
@@ -62,7 +67,7 @@ export default function SearchScreen() {
             );
           }
           return (
-            <View style={{ paddingHorizontal: spacing.lg, marginBottom: 8 }}>
+            <View style={cellStyle}>
               <ItemCard item={item} onPress={() => router.push(`/item/${item.id}`)} />
             </View>
           );
@@ -81,7 +86,7 @@ export default function SearchScreen() {
             )
           ) : null
         }
-        contentContainerStyle={{ paddingBottom: spacing.xl }}
+        contentContainerStyle={{ paddingHorizontal: spacing.sm, paddingBottom: spacing.xl }}
       />
     </Screen>
   );

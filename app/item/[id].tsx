@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { View, ScrollView, Text, TouchableOpacity, Alert } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { H2, Body, Muted, Card, Screen, Button, ErrorBanner } from '../../src/components/primitives';
+import { H2, Body, Muted, Card, Screen, MaxWidth, Button, ErrorBanner } from '../../src/components/primitives';
 import { ExpoImage } from '../../src/components/ExpoImage';
 import { BoundCodesList } from '../../src/components/BoundCodesList';
 import { useItem, useItemHistory, useDeleteItem, useMoveItem } from '../../src/hooks/useItems';
@@ -74,7 +74,8 @@ export default function ItemDetailScreen() {
 
   return (
     <Screen>
-      <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: 12, paddingBottom: 40 }}>
+      <ScrollView contentContainerStyle={{ alignItems: 'center' }}>
+        <MaxWidth style={{ padding: spacing.lg, gap: 12, paddingBottom: 40 }}>
         {item.photo_urls?.[0] ? (
           <ExpoImage uri={item.photo_urls[0]} style={{ width: '100%', height: 220, borderRadius: radius.mdLg }} />
         ) : null}
@@ -129,6 +130,7 @@ export default function ItemDetailScreen() {
         </View>
 
         <Button title={t('common.delete')} variant="danger" onPress={onDelete} loading={deleteItem.isPending} />
+        </MaxWidth>
       </ScrollView>
     </Screen>
   );

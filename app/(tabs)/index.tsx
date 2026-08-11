@@ -2,10 +2,11 @@
 import React from 'react';
 import { View, ScrollView, Text, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Screen, H1, Card, Body, Muted, Button } from '../../src/components/primitives';
+import { Screen, H1, Card, Body, Muted, Button, MaxWidth } from '../../src/components/primitives';
 import { HouseholdSwitcher } from '../../src/components/HouseholdSwitcher';
 import { ItemCard } from '../../src/components/ItemCard';
 import { useItems } from '../../src/hooks/useItems';
+import { useResponsive } from '../../src/hooks/useResponsive';
 import { useHousehold } from '../../src/lib/household';
 import { colors, spacing } from '../../src/theme';
 import { useTranslation } from 'react-i18next';
@@ -13,6 +14,7 @@ import { useTranslation } from 'react-i18next';
 export default function HomeScreen() {
   const { t } = useTranslation();
   const router = useRouter();
+  const { isWide } = useResponsive();
   const { memberships } = useHousehold();
 
   // Household gate: no households yet → prompt to create one.
@@ -22,21 +24,23 @@ export default function HomeScreen() {
 
   return (
     <Screen>
-      <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: 12 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <H1>{t('app.name')}</H1>
-          <TouchableOpacity
-            onPress={() => router.push('/settings')}
-            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-            accessibilityRole="button"
-            accessibilityLabel={t('settings.title')}
-          >
-            <Text style={{ fontSize: 22 }}>⚙️</Text>
-          </TouchableOpacity>
-        </View>
-        <HouseholdSwitcher />
-        <QuickActions />
-        <RecentItems />
+      <ScrollView contentContainerStyle={{ alignItems: 'center' }}>
+        <MaxWidth style={{ padding: spacing.lg, gap: 12, paddingBottom: spacing.xl }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <H1>{t('app.name')}</H1>
+            <TouchableOpacity
+              onPress={() => router.push('/settings')}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              accessibilityRole="button"
+              accessibilityLabel={t('settings.title')}
+            >
+              <Text style={{ fontSize: 22 }}>⚙️</Text>
+            </TouchableOpacity>
+          </View>
+          <HouseholdSwitcher />
+          <QuickActions />
+          <RecentItems columns={isWide ? 2 : 1} />
+        </MaxWidth>
       </ScrollView>
     </Screen>
   );
@@ -71,7 +75,7 @@ function ActionTile({ emoji, label, onPress }: { emoji: string; label: string; o
   );
 }
 
-function RecentItems() {
+function RecentItems({ columns = 1 }: { columns?: number }) {
   const { t } = useTranslation();
   const router = useRouter();
   const { data, isLoading } = useItems();
@@ -84,6 +88,14 @@ function RecentItems() {
         <Card>
           <Muted>{t('items.empty')}</Muted>
         </Card>
+      ) : columns > 1 ? (
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+          {data.slice(0, 6).map((it: typeof data[number]) => (
+            <View key={it.id} style={{ width: '48%', flexGrow: 1 }}>
+              <ItemCard item={it} onPress={() => router.push(`/item/${it.id}`)} />
+            </View>
+          ))}
+        </View>
       ) : (
         data.slice(0, 5).map((it: typeof data[number]) => (
           <ItemCard key={it.id} item={it} onPress={() => router.push(`/item/${it.id}`)} />

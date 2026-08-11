@@ -5,12 +5,14 @@ import { useRouter } from 'expo-router';
 import { Screen, Input, EmptyState, ErrorBanner, Button, H1, ListSkeleton } from '../../src/components/primitives';
 import { ItemCard } from '../../src/components/ItemCard';
 import { useItems } from '../../src/hooks/useItems';
+import { useResponsive } from '../../src/hooks/useResponsive';
 import { spacing, colors } from '../../src/theme';
 import { useTranslation } from 'react-i18next';
 
 export default function ItemsScreen() {
   const { t } = useTranslation();
   const router = useRouter();
+  const { columns } = useResponsive();
   const [q, setQ] = useState('');
   const { data, isLoading, error, refetch, isFetching } = useItems(q);
   return (
@@ -22,9 +24,11 @@ export default function ItemsScreen() {
       </View>
       <FlatList
         data={data ?? []}
+        key={`cols-${columns}`}
+        numColumns={columns}
         keyExtractor={(i) => i.id}
         renderItem={({ item }) => (
-          <View style={{ paddingHorizontal: spacing.lg, marginBottom: 8 }}>
+          <View style={{ flex: 1 / columns, padding: spacing.sm }}>
             <ItemCard item={item} onPress={() => router.push(`/item/${item.id}`)} />
           </View>
         )}
@@ -37,7 +41,7 @@ export default function ItemsScreen() {
             <EmptyState title={t('items.empty')} />
           )
         }
-        contentContainerStyle={{ paddingBottom: spacing.xl }}
+        contentContainerStyle={{ paddingHorizontal: spacing.sm, paddingBottom: spacing.xl }}
         refreshControl={<RefreshControl refreshing={isFetching} onRefresh={refetch} tintColor={colors.textMuted} />}
       />
     </Screen>

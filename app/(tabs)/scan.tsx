@@ -1,6 +1,6 @@
 /** Scan tab: live camera + resolution state machine. */
 import React, { useEffect, useState } from 'react';
-import { View, Modal, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Modal, KeyboardAvoidingView, Platform, useWindowDimensions } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useRouter } from 'expo-router';
 import { Screen, Button, Input, Card, Body, Muted, H2 } from '../../src/components/primitives';
@@ -14,6 +14,7 @@ import { colors } from '../../src/theme';
 import { useTranslation } from 'react-i18next';
 import { hapticSuccess } from '../../src/lib/haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { CONTENT_MAX_WIDTH } from '../../src/hooks/useResponsive';
 import type { ExternalCodeType } from '../../src/lib/supabase';
 
 export default function ScanScreen() {
@@ -23,6 +24,8 @@ export default function ScanScreen() {
   const { activeHousehold } = useHousehold();
   const { activePlaceId, activePlaceName } = useUiStore();
   const insets = useSafeAreaInsets();
+  const { width: winWidth } = useWindowDimensions();
+  const sheetWidth = Math.min(winWidth - 32, CONTENT_MAX_WIDTH);
 
   const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
@@ -125,17 +128,21 @@ export default function ScanScreen() {
         />
         <ScanOverlay />
         {prompt ? (
-          <View style={{ position: 'absolute', top: insets.top + 12, left: 16, right: 16 }}>
-            <Card>
-              <Body style={{ fontWeight: '600' }}>{prompt}</Body>
-              <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
-                <Button title={t('common.done')} onPress={() => { setPrompt(null); reset(); }} />
-              </View>
-            </Card>
+          <View style={{ position: 'absolute', top: insets.top + 12, left: 0, right: 0, alignItems: 'center' }}>
+            <View style={{ width: sheetWidth }}>
+              <Card>
+                <Body style={{ fontWeight: '600' }}>{prompt}</Body>
+                <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+                  <Button title={t('common.done')} onPress={() => { setPrompt(null); reset(); }} />
+                </View>
+              </Card>
+            </View>
           </View>
         ) : null}
-        <View style={{ position: 'absolute', bottom: insets.bottom + 16, left: 16, right: 16, gap: 8 }}>
-          <Button title={t('scan.manualEntry')} variant="ghost" onPress={() => setManualOpen(true)} />
+        <View style={{ position: 'absolute', bottom: insets.bottom + 16, left: 0, right: 0, alignItems: 'center' }}>
+          <View style={{ width: sheetWidth }}>
+            <Button title={t('scan.manualEntry')} variant="ghost" onPress={() => setManualOpen(true)} />
+          </View>
         </View>
       </View>
 
@@ -145,7 +152,7 @@ export default function ScanScreen() {
           style={{ flex: 1, justifyContent: 'flex-end' }}
         >
           <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' }} />
-          <View style={{ backgroundColor: colors.bg, padding: 20, gap: 12, borderTopLeftRadius: 24, borderTopRightRadius: 24 }}>
+          <View style={{ backgroundColor: colors.bg, padding: 20, gap: 12, borderTopLeftRadius: 24, borderTopRightRadius: 24, width: sheetWidth, alignSelf: 'center' }}>
             <H2>{t('scan.enterCode')}</H2>
             <Input value={manual} onChangeText={setManual} autoCapitalize="none" />
             <Button

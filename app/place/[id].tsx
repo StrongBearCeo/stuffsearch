@@ -2,7 +2,7 @@
 import React from 'react';
 import { View, ScrollView, Alert } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { H2, Body, Muted, Card, Screen, Button, ErrorBanner } from '../../src/components/primitives';
+import { H2, Body, Muted, Card, Screen, MaxWidth, Button, ErrorBanner } from '../../src/components/primitives';
 import { ExpoImage } from '../../src/components/ExpoImage';
 import { ItemCard } from '../../src/components/ItemCard';
 import { BoundCodesList } from '../../src/components/BoundCodesList';
@@ -68,7 +68,8 @@ export default function PlaceDetailScreen() {
 
   return (
     <Screen>
-      <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: 12, paddingBottom: 40 }}>
+      <ScrollView contentContainerStyle={{ alignItems: 'center' }}>
+        <MaxWidth style={{ padding: spacing.lg, gap: 12, paddingBottom: 40 }}>
         {place.photo_url ? (
           <ExpoImage uri={place.photo_url} style={{ width: '100%', height: 180, borderRadius: radius.mdLg }} />
         ) : null}
@@ -98,6 +99,7 @@ export default function PlaceDetailScreen() {
         ) : null}
 
         <Button title={t('common.delete')} variant="danger" onPress={onDelete} loading={deletePlace.isPending} />
+        </MaxWidth>
       </ScrollView>
     </Screen>
   );
