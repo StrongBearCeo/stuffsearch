@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { View, Text, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
-import { H1, Body, Muted, Input, Button, Screen } from '../../src/components/primitives';
+import { H1, Muted, Input, Button, Screen } from '../../src/components/primitives';
 import { ErrorBanner } from '../../src/components/primitives';
 import { colors, spacing } from '../../src/theme';
 import { useAuth } from '../../src/lib/auth';

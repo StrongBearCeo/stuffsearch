@@ -17,7 +17,7 @@ import { colors } from '../src/theme';
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
 function Gate({ children }: { children: React.ReactNode }) {
-  const { session, loading } = useAuth();
+  const { loading } = useAuth();
   // expo-router redirects via the <Redirect /> component in index screens.
   // Here we only block rendering until we know whether there's a session.
   if (loading) {

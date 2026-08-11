@@ -54,15 +54,11 @@ export function HouseholdProvider({ children }: { children: ReactNode }) {
       setLoading(false);
       return;
     }
-    let active = true;
     (async () => {
       setLoading(true);
       await loadMemberships();
       setLoading(false);
     })();
-    return () => {
-      active = false;
-    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 

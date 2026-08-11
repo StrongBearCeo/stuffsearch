@@ -96,7 +96,6 @@ export function useCreateItem() {
 
 export function useUpdateItem() {
   const qc = useQueryClient();
-  const { user } = useAuth();
   return useMutation({
     mutationFn: async ({ id, patch }: { id: string; patch: TablesUpdate<'items'> }) => {
       const { data, error } = await supabase

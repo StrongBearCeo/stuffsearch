@@ -1,8 +1,8 @@
 /** Create or edit a place. Supports a prefilled external code (from scan). */
 import React, { useEffect, useState } from 'react';
-import { View, ScrollView, Text } from 'react-native';
+import { ScrollView, Text } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Screen, H1, Input, Body, Muted, Card, Button, ErrorBanner } from '../../src/components/primitives';
+import { Screen, H1, Input, Muted, Card, Button, ErrorBanner } from '../../src/components/primitives';
 import { useCreatePlace, useUpdatePlace, usePlace } from '../../src/hooks/usePlaces';
 import { useBindExternalCode } from '../../src/hooks/useExternalCode';
 import { useHousehold } from '../../src/lib/household';

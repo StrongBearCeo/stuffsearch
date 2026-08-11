@@ -1,6 +1,6 @@
 /** Create a new household. */
 import React, { useState } from 'react';
-import { View, ScrollView } from 'react-native';
+import { ScrollView } from 'react-native';
 import { router } from 'expo-router';
 import { Screen, H1, Muted, Input, Button, ErrorBanner } from '../../src/components/primitives';
 import { useHousehold } from '../../src/lib/household';

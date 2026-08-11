@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { View, FlatList } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Screen, H1, Input, Body, Muted, Card, Button, ErrorBanner } from '../src/components/primitives';
+import { Screen, H1, Input, Body, Muted, Card, ErrorBanner } from '../src/components/primitives';
 import { ItemCard } from '../src/components/ItemCard';
 import { VoiceButton } from '../src/components/VoiceButton';
 import { useItems } from '../src/hooks/useItems';

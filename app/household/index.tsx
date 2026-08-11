@@ -1,11 +1,11 @@
 /** Household index: members list + invite QR + leave/transfer. */
-import React, { useState } from 'react';
+import React from 'react';
 import { View, ScrollView, Text, TouchableOpacity, Alert } from 'react-native';
 import { router } from 'expo-router';
-import { Screen, H1, H2, Muted, Card, Button, ErrorBanner, Input } from '../../src/components/primitives';
+import { Screen, H1, H2, Muted, Card, Button, ErrorBanner } from '../../src/components/primitives';
 import { InviteQR } from '../../src/components/InviteQR';
 import { MemberRow } from '../../src/components/MemberRow';
-import { useMembers, useUpdateMemberRole, useRemoveMember, useRotateInviteToken } from '../../src/hooks/useMembers';
+import { useMembers, useUpdateMemberRole, useRemoveMember } from '../../src/hooks/useMembers';
 import type { MemberWithProfile } from '../../src/hooks/useMembers';
 import { useHousehold } from '../../src/lib/household';
 import { colors, spacing } from '../../src/theme';
@@ -18,7 +18,6 @@ export default function HouseholdIndexScreen() {
   const { data: members, error } = useMembers();
   const updateRole = useUpdateMemberRole();
   const removeMember = useRemoveMember();
-  const rotate = useRotateInviteToken();
 
   if (!activeHousehold) {
     return (

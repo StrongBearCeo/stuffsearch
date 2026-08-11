@@ -1,6 +1,6 @@
 /** Place detail: contents + info + edit/delete. */
-import React, { useState } from 'react';
-import { View, ScrollView, Text, TouchableOpacity, Alert } from 'react-native';
+import React from 'react';
+import { View, ScrollView, Alert } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { H2, Body, Muted, Card, Screen, Button, ErrorBanner } from '../../src/components/primitives';
 import { ExpoImage } from '../../src/components/ExpoImage';
@@ -11,7 +11,7 @@ import { useExternalCodes, useUnbindExternalCode } from '../../src/hooks/useExte
 import { useHousehold } from '../../src/lib/household';
 import type { Item } from '../../src/lib/supabase';
 import { useUiStore } from '../../src/store/ui';
-import { colors, spacing } from '../../src/theme';
+import { spacing } from '../../src/theme';
 import { useTranslation } from 'react-i18next';
 
 export default function PlaceDetailScreen() {

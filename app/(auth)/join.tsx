@@ -1,6 +1,6 @@
 /** Join household via invite token (paste or scan). */
 import React, { useState } from 'react';
-import { View, ScrollView } from 'react-native';
+import { ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { H1, Muted, Input, Button, Screen, ErrorBanner } from '../../src/components/primitives';
 import { spacing } from '../../src/theme';

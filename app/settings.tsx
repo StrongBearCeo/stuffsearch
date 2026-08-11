@@ -1,7 +1,6 @@
 /** Settings: language, voice provider, account, sign out. */
 import React from 'react';
-import { View, ScrollView, Text, TouchableOpacity, Alert } from 'react-native';
-import { router } from 'expo-router';
+import { ScrollView, Text, TouchableOpacity, Alert } from 'react-native';
 import { Screen, H1, H2, Muted, Card, Button } from '../src/components/primitives';
 import { useAuth } from '../src/lib/auth';
 import { setLanguage, LANGUAGES, type AppLanguage } from '../src/lib/i18n';

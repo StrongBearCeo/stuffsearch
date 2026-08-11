@@ -17,7 +17,10 @@ export interface DeepLinkTarget {
   householdShort?: string;
 }
 
-/** Try to parse a payload as a StuffSearch deep-link. */
+/** Try to parse a payload as a StuffSearch deep-link.
+ * WHATWG URL treats custom-scheme hosts like `stuffsearch://item/<token>` with
+ * `item` as the HOST and `<token>` as the first path segment, so we combine
+ * host + pathname to recover the full path. */
 export function parseDeepLink(payload: string): DeepLinkTarget | null {
   let url: URL;
   try {
@@ -26,7 +29,11 @@ export function parseDeepLink(payload: string): DeepLinkTarget | null {
     return null;
   }
   if (url.protocol !== `${APP_SCHEME}:`) return null;
-  const seg = url.pathname.split('/').filter(Boolean); // e.g. ["item","<token>"]
+  // For custom schemes, `host` holds the first path segment (e.g. "item")
+  // and pathname holds the rest. Combine both, accounting for either shape.
+  const host = url.hostname; // "item" | "place" | "invite" (or empty on some parsers)
+  const path = url.pathname.split('/').filter(Boolean);
+  const seg = host ? [host, ...path] : path;
   if (seg.length !== 2) return null;
   const kind = seg[0];
   if (kind !== 'item' && kind !== 'place' && kind !== 'invite') return null;

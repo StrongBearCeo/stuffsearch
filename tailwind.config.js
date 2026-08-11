@@ -1,7 +1,9 @@
 /** @type {import('tailwindcss').Config} */
+// NativeWind v2 doesn't ship a 'nativewind/preset' (that's v3). The babel
+// plugin (nativewind/babel) handles the RN compilation; tailwind config stays
+// standard.
 module.exports = {
   content: ['./app/**/*.{ts,tsx}', './src/**/*.{ts,tsx}'],
-  presets: [require('nativewind/preset')],
   theme: {
     extend: {
       colors: {

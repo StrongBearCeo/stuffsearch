@@ -1,30 +1,24 @@
 /** Scan tab: live camera + resolution state machine. */
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, Modal } from 'react-native';
+import { View, Modal } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useRouter } from 'expo-router';
-import { Screen, Button, Input, Card, Body, Muted, H2, ErrorBanner } from '../../src/components/primitives';
+import { Screen, Button, Input, Card, Body, Muted, H2 } from '../../src/components/primitives';
 import { ScanOverlay } from '../../src/components/ScanOverlay';
 import { CreateFromCodeSheet } from '../../src/components/CreateFromCodeSheet';
 import { useScan } from '../../src/hooks/useScan';
-import { useMoveItem } from '../../src/hooks/useItems';
-import { useCreateItem } from '../../src/hooks/useItems';
-import { useCreatePlace } from '../../src/hooks/usePlaces';
-import { useBindExternalCode } from '../../src/hooks/useExternalCode';
 import { scannerTypeToCodeType } from '../../src/lib/constants';
 import { useUiStore } from '../../src/store/ui';
 import { useHousehold } from '../../src/lib/household';
-import { useAuth } from '../../src/lib/auth';
-import { colors, spacing } from '../../src/theme';
+import { colors } from '../../src/theme';
 import { useTranslation } from 'react-i18next';
 import type { ExternalCodeType } from '../../src/lib/supabase';
 
 export default function ScanScreen() {
   const { t } = useTranslation();
   const router = useRouter();
-  const { resolve, reset, resolving, outcome, error } = useScan();
-  const { activeHouseholdId, activeHousehold } = useHousehold();
-  const { user } = useAuth();
+  const { resolve, reset, outcome } = useScan();
+  const { activeHousehold } = useHousehold();
   const { activePlaceId, activePlaceName } = useUiStore();
 
   const [permission, requestPermission] = useCameraPermissions();

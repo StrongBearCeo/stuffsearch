@@ -1,10 +1,9 @@
 /** Create or edit an item. Supports a prefilled external code (from scan) and
  * optional LLM enrichment. When `id` param is present, edits that item. */
 import React, { useEffect, useState } from 'react';
-import { View, ScrollView, Text } from 'react-native';
+import { ScrollView, Text } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Screen, H1, Input, Body, Muted, Card, Button, ErrorBanner } from '../../src/components/primitives';
-import { ExpoImage } from '../../src/components/ExpoImage';
+import { Screen, H1, Input, Muted, Card, Button, ErrorBanner } from '../../src/components/primitives';
 import { useCreateItem, useUpdateItem, useItem } from '../../src/hooks/useItems';
 import { useBindExternalCode } from '../../src/hooks/useExternalCode';
 import { useHousehold } from '../../src/lib/household';

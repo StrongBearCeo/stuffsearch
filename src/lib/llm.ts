@@ -62,7 +62,7 @@ export interface AskLlmRequest {
 }
 export interface AskLlmResponse {
   answer: string;
-  sources: Array<{ item_id: string; name: string; place_name: string | null }>;
+  sources: { item_id: string; name: string; place_name: string | null }[];
 }
 export async function askLlm(req: AskLlmRequest): Promise<AskLlmResponse> {
   const { data, error } = await supabase.functions.invoke<AskLlmResponse>('ask-llm', {

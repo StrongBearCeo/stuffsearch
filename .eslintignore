@@ -1,0 +1,7 @@
+# Metro/Babel config files use require()/__dirname (CommonJS) — not ESM.
+metro.config.js
+babel.config.js
+# Generated types
+src/lib/database.types.ts
+# Supabase functions are Deno, linted separately if at all.
+supabase/functions

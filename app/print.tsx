@@ -1,6 +1,6 @@
 /** Print screen: list items/places lacking app codes and print/share a sheet. */
 import React, { useMemo } from 'react';
-import { View, ScrollView } from 'react-native';
+import { ScrollView } from 'react-native';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { Screen, H1, Muted, Card, Body, Button, EmptyState } from '../src/components/primitives';

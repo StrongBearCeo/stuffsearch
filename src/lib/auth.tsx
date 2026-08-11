@@ -102,6 +102,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
       refreshProfile,
     }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [session, profile, loading],
   );
 

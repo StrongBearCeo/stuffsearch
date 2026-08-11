@@ -1,7 +1,6 @@
 /** Ask the LLM: "where did I put the...?" over the active household's inventory. */
 import React, { useState } from 'react';
 import { View, ScrollView } from 'react-native';
-import { useRouter } from 'expo-router';
 import { Screen, H1, Input, Body, Muted, Card, Button, ErrorBanner } from '../src/components/primitives';
 import { VoiceButton } from '../src/components/VoiceButton';
 import { useAsk } from '../src/hooks/useSemanticSearch';
@@ -12,7 +11,6 @@ import { useTranslation } from 'react-i18next';
 
 export default function AskScreen() {
   const { t } = useTranslation();
-  const router = useRouter();
   const { activeHouseholdId } = useHousehold();
   const { profile } = useAuth();
   const [question, setQuestion] = useState('');

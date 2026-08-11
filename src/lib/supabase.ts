@@ -7,7 +7,7 @@
 import 'react-native-url-polyfill/auto';
 import { createClient } from '@supabase/supabase-js';
 import * as SecureStore from 'expo-secure-store';
-import type { Database } from './database.types';
+import type { Database, Tables, Enums } from './database.types';
 
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
@@ -40,10 +40,6 @@ export type {
   Tables,
   TablesInsert,
   TablesUpdate,
-  Enums,
-} from './database.types';
-import type {
-  Tables,
   Enums,
 } from './database.types';
 

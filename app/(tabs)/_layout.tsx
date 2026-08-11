@@ -13,7 +13,7 @@ import { useTranslation } from 'react-i18next';
 export default function TabsLayout() {
   const { t } = useTranslation();
   const { user } = useAuth();
-  const { memberships, loading } = useHousehold();
+  const { loading } = useHousehold();
 
   if (!user) return <Redirect href="/(auth)/welcome" />;
   if (loading) {

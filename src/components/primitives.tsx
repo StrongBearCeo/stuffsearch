@@ -12,7 +12,7 @@ import {
   type TouchableOpacityProps,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { cn, colors, radius } from '../theme';
+import { colors, radius } from '../theme';
 
 export function Screen({ style, children }: { style?: ViewProps['style']; children: React.ReactNode }) {
   return <View style={[{ flex: 1, backgroundColor: colors.bg }, style]}>{children}</View>;

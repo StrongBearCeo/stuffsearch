@@ -12,8 +12,7 @@ import { useTranslation } from 'react-i18next';
 
 export default function HomeScreen() {
   const { t } = useTranslation();
-  const router = useRouter();
-  const { memberships, createHousehold } = useHousehold();
+  const { memberships } = useHousehold();
 
   // Household gate: no households yet → prompt to create one.
   if (memberships.length === 0) {
@@ -81,7 +80,6 @@ function RecentItems() {
 function NoHousehold() {
   const { t } = useTranslation();
   const router = useRouter();
-  const { createHousehold } = useHousehold();
   return (
     <Screen>
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 12 }}>
