@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router';
 import { Screen, Input, EmptyState, ErrorBanner, Button, H1, ListSkeleton } from '../../src/components/primitives';
 import { ItemCard } from '../../src/components/ItemCard';
 import { useItems } from '../../src/hooks/useItems';
+import { usePlaces } from '../../src/hooks/usePlaces';
 import { useResponsive } from '../../src/hooks/useResponsive';
 import { spacing, colors } from '../../src/theme';
 import { useTranslation } from 'react-i18next';
@@ -15,6 +16,9 @@ export default function ItemsScreen() {
   const { columns } = useResponsive();
   const [q, setQ] = useState('');
   const { data, isLoading, error, refetch, isFetching } = useItems(q);
+  const { data: places } = usePlaces();
+  // Build an id → name map once so each card can show its exact location.
+  const placeNameById = new Map((places ?? []).map((p) => [p.id, p.name]));
   return (
     <Screen>
       <View style={{ padding: spacing.lg, gap: 8 }}>
@@ -29,7 +33,11 @@ export default function ItemsScreen() {
         keyExtractor={(i) => i.id}
         renderItem={({ item }) => (
           <View style={{ flex: 1 / columns, padding: spacing.sm }}>
-            <ItemCard item={item} onPress={() => router.push(`/item/${item.id}`)} />
+            <ItemCard
+              item={item}
+              placeName={item.current_place_id ? placeNameById.get(item.current_place_id) : null}
+              onPress={() => router.push(`/item/${item.id}`)}
+            />
           </View>
         )}
         ListEmptyComponent={
@@ -38,7 +46,7 @@ export default function ItemsScreen() {
           ) : isLoading ? (
             <ListSkeleton />
           ) : (
-            <EmptyState title={t('items.empty')} />
+            <EmptyState title={t('items.empty')} hint={t('items.emptyHint')} />
           )
         }
         contentContainerStyle={{ paddingHorizontal: spacing.sm, paddingBottom: spacing.xl }}

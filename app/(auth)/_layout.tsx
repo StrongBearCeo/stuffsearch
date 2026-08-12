@@ -7,6 +7,7 @@ export default function AuthLayout() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="welcome" />
       <Stack.Screen name="join" />
+      <Stack.Screen name="confirm" />
     </Stack>
   );
 }

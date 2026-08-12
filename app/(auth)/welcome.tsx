@@ -1,9 +1,10 @@
 /** Welcome / sign-in screen. Magic link + password (per user choice). */
 import React, { useState } from 'react';
-import { View, Text, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, ScrollView, KeyboardAvoidingView, Platform, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { H1, Muted, Input, Button, Screen } from '../../src/components/primitives';
 import { ErrorBanner } from '../../src/components/primitives';
+import { CONTENT_MAX_WIDTH } from '../../src/hooks/useResponsive';
 import { colors, spacing, tint } from '../../src/theme';
 import { useAuth } from '../../src/lib/auth';
 import { errorMessage } from '../../src/lib/errors';
@@ -46,7 +47,11 @@ export default function WelcomeScreen() {
   return (
     <Screen>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={{ padding: spacing.xl, gap: 16, justifyContent: 'center', flex: 1 }}>
+        <ScrollView
+          contentContainerStyle={{ padding: spacing.xl, gap: 16, justifyContent: 'center', flex: 1, alignItems: 'center' }}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={{ width: '100%', maxWidth: CONTENT_MAX_WIDTH, gap: 16 }}>
           <View style={{ gap: 4, marginBottom: 16 }}>
             <H1>{t('auth.welcome')}</H1>
             <Muted>{t('auth.subtitle')}</Muted>
@@ -106,6 +111,7 @@ export default function WelcomeScreen() {
           />
 
           <Button title={t('auth.useInvite')} variant="ghost" onPress={() => router.push('/(auth)/join')} />
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </Screen>
@@ -127,10 +133,12 @@ function ModeLink({
 }) {
   return (
     <View style={{ flexDirection: center ? 'row' : 'column', alignItems: 'center', gap: 4, justifyContent: 'center' }}>
-      <Text style={{ color: colors.textMuted, fontSize: 13 }}>{label}</Text>
-      <Text onPress={onPress} style={{ color: active ? colors.text : colors.primary, fontWeight: '700', fontSize: 14 }}>
-        {action}
-      </Text>
+      {label ? <Text style={{ color: colors.textMuted, fontSize: 13 }}>{label}</Text> : null}
+      <TouchableOpacity onPress={onPress} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+        <Text style={{ color: active ? colors.text : colors.primary, fontWeight: '700', fontSize: 14 }}>
+          {action}
+        </Text>
+      </TouchableOpacity>
     </View>
   );
 }

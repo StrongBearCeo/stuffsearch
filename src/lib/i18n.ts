@@ -33,6 +33,9 @@ export async function initI18n() {
     resources: { en: { translation: en }, vi: { translation: vi } },
     lng,
     fallbackLng: 'en',
+    // Hermes lacks Intl.PluralRules; v3 plural rules are baked into i18next
+    // and need no polyfill. Our locale files use no plural keys anyway.
+    compatibilityJSON: 'v3',
     interpolation: { escapeValue: false },
   });
   initialized = true;

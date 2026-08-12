@@ -12,13 +12,31 @@ import { AuthProvider, useAuth } from '../src/lib/auth';
 import { HouseholdProvider } from '../src/lib/household';
 import { initI18n } from '../src/lib/i18n';
 import { queryClient } from '../src/lib/offline';
+import { TutorialOverlay } from '../src/components/TutorialOverlay';
+import { hasSeenTutorial, markTutorialSeen, onTutorialReplay } from '../src/lib/tutorial';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { colors, headerTheme } from '../src/theme';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
 function Gate({ children }: { children: React.ReactNode }) {
-  const { loading } = useAuth();
+  const { loading, user } = useAuth();
+  const [showTutorial, setShowTutorial] = useState(false);
+
+  // On first sign-in (or first launch while logged in), show the tutorial once.
+  useEffect(() => {
+    if (loading || !user) return;
+    let active = true;
+    (async () => {
+      const seen = await hasSeenTutorial();
+      if (active && !seen) setShowTutorial(true);
+    })();
+    return () => { active = false; };
+  }, [loading, user]);
+
+  // Allow Settings to trigger a replay.
+  useEffect(() => onTutorialReplay(() => setShowTutorial(true)), []);
+
   // expo-router redirects via the <Redirect /> component in index screens.
   // Here we only block rendering until we know whether there's a session.
   if (loading) {
@@ -28,7 +46,18 @@ function Gate({ children }: { children: React.ReactNode }) {
       </View>
     );
   }
-  return <>{children}</>;
+  return (
+    <>
+      {children}
+      <TutorialOverlay
+        visible={showTutorial}
+        onFinish={async () => {
+          setShowTutorial(false);
+          await markTutorialSeen();
+        }}
+      />
+    </>
+  );
 }
 
 export default function RootLayout() {

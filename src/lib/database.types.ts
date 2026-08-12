@@ -315,6 +315,10 @@ export type Database = {
     Functions: {
       is_household_member: { Args: { _household_id: string }; Returns: boolean }
       is_household_owner: { Args: { _household_id: string }; Returns: boolean }
+      convert_item_to_place: {
+        Args: { _item_id: string; _user_id: string }
+        Returns: string
+      }
       resolve_code: {
         Args: { _code_value: string; _user_id: string }
         Returns: {

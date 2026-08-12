@@ -1,13 +1,11 @@
-/** ScanOverlay — live camera scanner overlay frame + active-place banner. */
+/** ScanOverlay — live camera scanner overlay frame + hint text. */
 import React from 'react';
 import { View, Text } from 'react-native';
 import { colors, radius } from '../theme';
-import { useUiStore } from '../store/ui';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export function ScanOverlay() {
-  const { activePlaceId, activePlaceName } = useUiStore();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   return (
@@ -37,23 +35,9 @@ export function ScanOverlay() {
           alignItems: 'center',
         }}
       >
-        <Text style={{ color: colors.text, fontWeight: '600', marginBottom: 8 }}>
+        <Text style={{ color: colors.text, fontWeight: '600' }}>
           {t('scan.hint')}
         </Text>
-        <View
-          style={{
-            backgroundColor: activePlaceId ? colors.primary : colors.surface,
-            paddingHorizontal: 12,
-            paddingVertical: 6,
-            borderRadius: radius.md,
-          }}
-        >
-          <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600' }}>
-            {activePlaceId
-              ? `${t('scan.activePlace')}: ${activePlaceName ?? '—'}`
-              : t('scan.noActivePlace')}
-          </Text>
-        </View>
       </View>
     </View>
   );

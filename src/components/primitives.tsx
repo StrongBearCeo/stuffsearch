@@ -120,21 +120,30 @@ export function Muted({ children, style, ...rest }: TextProps & { children: Reac
   );
 }
 
-export function Input(props: TextInputProps) {
+export function Input({ style, multiline, ...rest }: TextInputProps) {
   return (
     <TextInput
       placeholderTextColor={colors.textMuted}
-      style={{
-        backgroundColor: colors.surfaceAlt,
-        color: colors.text,
-        borderRadius: radius.md,
-        paddingHorizontal: 12,
-        paddingVertical: 10,
-        fontSize: 15,
-        borderWidth: 1,
-        borderColor: colors.border,
-      }}
-      {...props}
+      // Merge (not replace): caller `style` must augment the base, otherwise a
+      // caller passing e.g. { minHeight: 80 } would clobber color/background/
+      // border and the field would render as black text with no input chrome.
+      // textAlignVertical:'top' keeps multiline text pinned to the top on
+      // Android (it otherwise vertically centers, which reads as a bug).
+      style={[
+        {
+          backgroundColor: colors.surfaceAlt,
+          color: colors.text,
+          borderRadius: radius.md,
+          paddingHorizontal: 12,
+          paddingVertical: 10,
+          fontSize: 15,
+          borderWidth: 1,
+          borderColor: colors.border,
+        },
+        multiline ? { minHeight: 80, textAlignVertical: 'top' } : null,
+        style,
+      ]}
+      {...rest}
     />
   );
 }

@@ -57,6 +57,25 @@ export function usePlaceContents(placeId: string | undefined) {
   });
 }
 
+/** Places nested directly inside a place (parent_place_id = placeId). */
+export function usePlaceChildren(placeId: string | undefined) {
+  const { activeHouseholdId } = useHousehold();
+  return useQuery<Place[]>({
+    queryKey: ['place_children', placeId],
+    enabled: !!placeId && !!activeHouseholdId,
+    queryFn: async (): Promise<Place[]> => {
+      if (!placeId) return [];
+      const { data, error } = await supabase
+        .from('places')
+        .select('*')
+        .eq('parent_place_id', placeId)
+        .order('name', { ascending: true });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+}
+
 export function useCreatePlace() {
   const qc = useQueryClient();
   const { activeHouseholdId } = useHousehold();
@@ -97,6 +116,9 @@ export function useUpdatePlace() {
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: KEY });
       qc.invalidateQueries({ queryKey: [...KEY, data.id] });
+      // Reparenting affects both the old and new parent's child lists.
+      qc.invalidateQueries({ queryKey: ['place_children'] });
+      qc.invalidateQueries({ queryKey: ['place_contents'] });
     },
   });
 }

@@ -31,33 +31,34 @@ describe('appQrPayload', () => {
 });
 
 describe('buildPrintHtml', () => {
-  it('produces valid HTML with the codes embedded', () => {
+  it('produces valid HTML with the codes embedded as real QR SVGs', async () => {
     const codes: PrintableCode[] = [
       { name: 'Hammer', payload: 'stuffsearch://item/t1?h=abcd1234', kind: 'item' },
       { name: 'Garage', payload: 'stuffsearch://place/t2?h=abcd1234', kind: 'place' },
     ];
-    const html = buildPrintHtml(codes);
+    const html = await buildPrintHtml(codes);
     expect(html).toContain('<!doctype html>');
     expect(html).toContain('Hammer');
     expect(html).toContain('Garage');
-    expect(html).toContain('stuffsearch://item/t1?h=abcd1234');
-    expect(html).toContain('stuffsearch://place/t2?h=abcd1234');
+    // Each QR must be a real inline SVG, not an empty placeholder div.
+    expect(html).toContain('<svg');
+    expect(html).not.toContain('data-payload=');
     // kind labels
     expect(html).toContain('>item<');
     expect(html).toContain('>place<');
   });
 
-  it('escapes HTML in names', () => {
+  it('escapes HTML in names', async () => {
     const codes: PrintableCode[] = [
       { name: '<script>alert(1)</script>', payload: 'x', kind: 'item' },
     ];
-    const html = buildPrintHtml(codes);
+    const html = await buildPrintHtml(codes);
     expect(html).not.toContain('<script>alert(1)</script>');
     expect(html).toContain('&lt;script&gt;');
   });
 
-  it('renders an empty grid for no codes', () => {
-    const html = buildPrintHtml([]);
+  it('renders an empty grid for no codes', async () => {
+    const html = await buildPrintHtml([]);
     expect(html).toContain('<!doctype html>');
     expect(html).toContain('StuffSearch codes');
   });

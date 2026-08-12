@@ -1,7 +1,8 @@
 /** Settings: language, voice provider, account, sign out. */
 import React from 'react';
-import { ScrollView, Text, TouchableOpacity, Alert } from 'react-native';
-import { Screen, H1, H2, Muted, Card, Button } from '../src/components/primitives';
+import { View, ScrollView, Text, TouchableOpacity, Alert } from 'react-native';
+import { useRouter } from 'expo-router';
+import { Screen, H1, H2, Body, Muted, Card, Button, MaxWidth } from '../src/components/primitives';
 import { useAuth } from '../src/lib/auth';
 import { setLanguage, LANGUAGES, type AppLanguage } from '../src/lib/i18n';
 import { colors, spacing, radius, tint } from '../src/theme';
@@ -9,10 +10,12 @@ import { useTranslation } from 'react-i18next';
 import { supabase } from '../src/lib/supabase';
 import { useHeaderTitle } from '../src/lib/useHeaderTitle';
 import { hapticSuccess } from '../src/lib/haptics';
+import { replayTutorial } from '../src/lib/tutorial';
 
 export default function SettingsScreen() {
   const { t, i18n } = useTranslation();
-  const { profile, signOut } = useAuth();
+  const { profile, user, signOut } = useAuth();
+  const router = useRouter();
   const currentLang = (i18n.language as AppLanguage) ?? 'en';
   useHeaderTitle(t('settings.title'));
 
@@ -33,7 +36,8 @@ export default function SettingsScreen() {
 
   return (
     <Screen>
-      <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: 12, paddingBottom: 40 }}>
+      <ScrollView contentContainerStyle={{ alignItems: 'center' }}>
+        <MaxWidth style={{ padding: spacing.lg, gap: 12, paddingBottom: 40, width: '100%' }}>
         <H1>{t('settings.title')}</H1>
 
         <Card style={{ gap: 8 }}>
@@ -43,17 +47,46 @@ export default function SettingsScreen() {
           ))}
         </Card>
 
-        <Card>
+        <Card style={{ gap: 4 }}>
           <H2>{t('settings.account')}</H2>
-          <Muted>{profile?.display_name ?? profile?.id?.slice(0, 8)}</Muted>
+          {profile?.display_name ? <Body style={{ fontWeight: '600' }}>{profile.display_name}</Body> : null}
+          {user?.email ? <Muted>{user.email}</Muted> : null}
           <Button title={t('auth.signOut')} variant="danger" onPress={onSignOut} style={{ marginTop: 8 }} />
         </Card>
+
+        <TouchableOpacity onPress={() => router.push('/print' as never)} accessibilityRole="button">
+          <Card style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <View>
+              <Body style={{ fontWeight: '600' }}>{t('print.title')}</Body>
+              <Muted>{t('print.hint')}</Muted>
+            </View>
+            <Text style={{ color: colors.primary, fontSize: 22 }}>🖨️</Text>
+          </Card>
+        </TouchableOpacity>
 
         <Card>
           <H2>{t('settings.about')}</H2>
           <Muted>{t('app.tagline')}</Muted>
           <Muted style={{ marginTop: 8, fontSize: 11 }}>{t('settings.securityNote')}</Muted>
         </Card>
+
+        {/* Help + replay tutorial */}
+        <TouchableOpacity onPress={() => router.push('/help' as never)} accessibilityRole="button">
+          <Card style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Body style={{ fontWeight: '600' }}>{t('help.title')}</Body>
+            <Text style={{ color: colors.primary, fontSize: 22 }}>❓</Text>
+          </Card>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => { hapticSuccess(); replayTutorial(); }}
+          accessibilityRole="button"
+        >
+          <Card style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Body style={{ fontWeight: '600' }}>{t('tutorial.stepWelcome')}</Body>
+            <Text style={{ color: colors.primary, fontSize: 22 }}>🔄</Text>
+          </Card>
+        </TouchableOpacity>
+        </MaxWidth>
       </ScrollView>
     </Screen>
   );

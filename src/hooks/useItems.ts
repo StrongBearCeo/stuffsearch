@@ -4,8 +4,18 @@ import { supabase, type Item, type ItemHistory, type TablesInsert, type TablesUp
 import { useHousehold } from '../lib/household';
 import { useAuth } from '../lib/auth';
 import { generateQrToken } from '../lib/qrcode';
+import { buildMovedNote, buildNote, type HistoryNoteKey } from '../lib/historyNote';
 
 const KEY = ['items'] as const;
+
+/** Resolve a place name by id, or null if id is null / not found. Used to write
+ *  specific item-history notes ("Moved from X to Y") rather than bare 'moved'. */
+async function placeNameById(id: string | null): Promise<string | null> {
+  if (!id) return null;
+  const { data, error } = await supabase.from('places').select('name').eq('id', id).maybeSingle();
+  if (error || !data) return null;
+  return data.name as string;
+}
 
 export function useItems(search?: string) {
   const { activeHouseholdId } = useHousehold();
@@ -77,13 +87,14 @@ export function useCreateItem() {
       };
       const { data, error } = await supabase.from('items').insert(payload).select().single();
       if (error) throw error;
-      // If placed immediately, record history.
+      // If placed immediately, record history with a specific place name.
       if (payload.current_place_id && data) {
+        const placeName = await placeNameById(payload.current_place_id);
         await supabase.from('item_history').insert({
           item_id: data.id,
           place_id: payload.current_place_id,
           moved_by: user?.id,
-          note: 'created here',
+          note: buildNote('created', placeName ? { to: placeName } : {}),
         });
       }
       return data;
@@ -114,26 +125,68 @@ export function useUpdateItem() {
   });
 }
 
-/** Move an item to a place: set current_place_id + last_moved_by + history row. */
+/** Move an item to a place: set current_place_id + last_moved_by + history row.
+ *  The history note is specific — it resolves the source (the item's previous
+ *  place) and destination names and writes e.g. "moved|from=Box A|to=Kitchen".
+ *  Pass `noteKey` to label a scan-initiated move distinctly (scanned_to,
+ *  scanned_in, scanned_new); it defaults to 'moved' for the manual picker. */
 export function useMoveItem() {
   const qc = useQueryClient();
   const { user } = useAuth();
   return useMutation({
-    mutationFn: async ({ itemId, placeId, note }: { itemId: string; placeId: string | null; note?: string }) => {
+    mutationFn: async ({
+      itemId,
+      placeId,
+      noteKey = 'moved',
+    }: {
+      itemId: string;
+      placeId: string | null;
+      noteKey?: HistoryNoteKey;
+    }) => {
+      // Read the item's current place BEFORE updating, so the note can say
+      // where it came from.
+      const { data: before } = await supabase
+        .from('items')
+        .select('current_place_id')
+        .eq('id', itemId)
+        .maybeSingle();
+      const fromId = (before?.current_place_id as string | null) ?? null;
+
+      const [fromName, toName] = await Promise.all([
+        placeNameById(fromId),
+        placeNameById(placeId),
+      ]);
+
       const { error: uErr } = await supabase
         .from('items')
         .update({ current_place_id: placeId, last_moved_by: user?.id })
         .eq('id', itemId);
       if (uErr) throw uErr;
+
+      // Build the note for the recorded event type. For 'moved' use the from/to
+      // helper; for the scan variants include the destination so the history
+      // reads specifically.
+      const note =
+        noteKey === 'moved'
+          ? buildMovedNote({ from: fromName, to: toName })
+          : buildNote(noteKey, toName ? { to: toName } : {});
+
       const { error: hErr } = await supabase.from('item_history').insert({
         item_id: itemId,
         place_id: placeId,
         moved_by: user?.id,
-        note: note ?? 'moved',
+        note,
       });
       if (hErr) throw hErr;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
+    onSuccess: (_d, vars) => {
+      qc.invalidateQueries({ queryKey: KEY });
+      // Keep the item's own detail cache fresh.
+      qc.invalidateQueries({ queryKey: [...KEY, vars.itemId] });
+      // The item left its old place and entered a new one; we don't know the
+      // old place id here, so refresh every place_contents view.
+      qc.invalidateQueries({ queryKey: ['place_contents'] });
+    },
   });
 }
 

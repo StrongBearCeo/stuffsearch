@@ -1,14 +1,13 @@
 /** Scan tab: live camera + resolution state machine. */
 import React, { useEffect, useState } from 'react';
-import { View, Modal, KeyboardAvoidingView, Platform, useWindowDimensions } from 'react-native';
+import { View, Modal, KeyboardAvoidingView, Platform, useWindowDimensions, TouchableOpacity } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Screen, Button, Input, Card, Body, Muted, H2 } from '../../src/components/primitives';
 import { ScanOverlay } from '../../src/components/ScanOverlay';
 import { CreateFromCodeSheet } from '../../src/components/CreateFromCodeSheet';
 import { useScan } from '../../src/hooks/useScan';
 import { scannerTypeToCodeType } from '../../src/lib/constants';
-import { useUiStore } from '../../src/store/ui';
 import { useHousehold } from '../../src/lib/household';
 import { colors } from '../../src/theme';
 import { useTranslation } from 'react-i18next';
@@ -22,7 +21,6 @@ export default function ScanScreen() {
   const router = useRouter();
   const { resolve, reset, outcome } = useScan();
   const { activeHousehold } = useHousehold();
-  const { activePlaceId, activePlaceName } = useUiStore();
   const insets = useSafeAreaInsets();
   const { width: winWidth } = useWindowDimensions();
   const sheetWidth = Math.min(winWidth - 32, CONTENT_MAX_WIDTH);
@@ -33,6 +31,15 @@ export default function ScanScreen() {
   const [manualOpen, setManualOpen] = useState(false);
   const [create, setCreate] = useState<{ value: string; type: ExternalCodeType } | null>(null);
   const [prompt, setPrompt] = useState<string | null>(null);
+
+  // Only mount the CameraView while this tab is on screen. Tab switches away
+  // tear the native camera down; returning re-mounts it fresh. Leaving it
+  // mounted across blur/focus causes the intermittent black-preview symptom.
+  const [focused, setFocused] = useState(false);
+  useFocusEffect(() => {
+    setFocused(true);
+    return () => setFocused(false);
+  });
 
   // Reset scanned lock when outcome clears.
   useEffect(() => {
@@ -61,13 +68,10 @@ export default function ScanScreen() {
       setCreate({ value: o.codeValue, type: codeType });
     } else if (o.type === 'matched') {
       const match = o.matches[0];
-      if (o.inActiveHousehold && match.entity_type === 'item' && activePlaceId) {
-        // scan-to-assign
-        setPrompt(t('scanResolve.assigned', { place: activePlaceName ?? '' }));
-      } else if (!o.inActiveHousehold && activeHousehold) {
+      if (!o.inActiveHousehold && activeHousehold) {
         setPrompt(t('scanResolve.switchPrompt', { name: '', household: activeHousehold.name }));
       } else {
-        // open the entity
+        // open the entity (item or place)
         router.push(`/${match.entity_type}/${match.entity_id}` as never);
         reset();
       }
@@ -103,10 +107,12 @@ export default function ScanScreen() {
   return (
     <Screen>
       <View style={{ flex: 1, position: 'relative' }}>
-        <CameraView
-          style={{ flex: 1 }}
-          onBarcodeScanned={(e) => handle(e.data, e.type)}
-          barcodeScannerSettings={{
+        {focused ? (
+          <CameraView
+            style={{ flex: 1 }}
+            active
+            onBarcodeScanned={(e) => handle(e.data, e.type)}
+            barcodeScannerSettings={{
             // SDK 54 replaced barcodeScannerEnabled with an explicit allow-list.
             // Cover QR + the common retail/industrial symbologies.
             barcodeTypes: [
@@ -125,7 +131,8 @@ export default function ScanScreen() {
               'datamatrix',
             ],
           }}
-        />
+          />
+        ) : null}
         <ScanOverlay />
         {prompt ? (
           <View style={{ position: 'absolute', top: insets.top + 12, left: 0, right: 0, alignItems: 'center' }}>
@@ -151,10 +158,22 @@ export default function ScanScreen() {
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={{ flex: 1, justifyContent: 'flex-end' }}
         >
-          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' }} />
+          {/* Backdrop: absolute so it overlays without stealing layout space from the sheet. */}
+          <TouchableOpacity
+            activeOpacity={1}
+            onPress={() => setManualOpen(false)}
+            style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)' }}
+          />
           <View style={{ backgroundColor: colors.bg, padding: 20, gap: 12, borderTopLeftRadius: 24, borderTopRightRadius: 24, width: sheetWidth, alignSelf: 'center' }}>
             <H2>{t('scan.enterCode')}</H2>
-            <Input value={manual} onChangeText={setManual} autoCapitalize="none" />
+            <Input
+              value={manual}
+              onChangeText={setManual}
+              autoCapitalize="none"
+              autoCorrect={false}
+              autoFocus
+              placeholder={t('scan.enterCode')}
+            />
             <Button
               title={t('common.confirm')}
               onPress={async () => {

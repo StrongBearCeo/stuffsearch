@@ -2,7 +2,7 @@
 import React from 'react';
 import { View, ScrollView, Text, TouchableOpacity } from 'react-native';
 import { router } from 'expo-router';
-import { Screen, H1, Card } from '../../src/components/primitives';
+import { Screen, H1, Card, MaxWidth } from '../../src/components/primitives';
 import { useHousehold } from '../../src/lib/household';
 import { colors, spacing, radius, tint } from '../../src/theme';
 import { useTranslation } from 'react-i18next';
@@ -15,7 +15,8 @@ export default function SwitchHouseholdScreen() {
   useHeaderTitle(t('household.switch'));
   return (
     <Screen>
-      <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: 8 }}>
+      <ScrollView contentContainerStyle={{ alignItems: 'center' }}>
+        <MaxWidth style={{ padding: spacing.lg, gap: 8, width: '100%' }}>
         <H1>{t('household.switch')}</H1>
         {memberships.map((m) => {
           const active = m.households.id === activeHousehold?.id;
@@ -56,6 +57,7 @@ export default function SwitchHouseholdScreen() {
             </TouchableOpacity>
           );
         })}
+        </MaxWidth>
       </ScrollView>
     </Screen>
   );

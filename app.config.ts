@@ -12,6 +12,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   orientation: 'default',
   icon: './assets/icon.png',
   scheme: APP_SCHEME,
+  // react-native-reanimated 4.x + react-native-worklets require the New
+  // Architecture. RN 0.81 / SDK 54 default to it; keep it on.
+  newArchEnabled: true,
   userInterfaceStyle: 'automatic',
   splash: {
     image: './assets/splash.png',
@@ -78,8 +81,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     [
       'expo-build-properties',
       {
-        ios: { newArchEnabled: false },
-        android: { newArchEnabled: false },
+        ios: { newArchEnabled: true },
+        android: { newArchEnabled: true },
       },
     ],
   ],

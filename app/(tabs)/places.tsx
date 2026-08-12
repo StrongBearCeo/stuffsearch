@@ -15,6 +15,8 @@ export default function PlacesScreen() {
   const { columns } = useResponsive();
   const [q, setQ] = useState('');
   const { data, isLoading, error, refetch, isFetching } = usePlaces(q);
+  // Build an id → name map so each card can show its parent place (location).
+  const parentNameById = new Map((data ?? []).map((p) => [p.id, p.name]));
   return (
     <Screen>
       <View style={{ padding: spacing.lg, gap: 8 }}>
@@ -29,7 +31,11 @@ export default function PlacesScreen() {
         keyExtractor={(p) => p.id}
         renderItem={({ item }) => (
           <View style={{ flex: 1 / columns, padding: spacing.sm }}>
-            <PlaceCard place={item} onPress={() => router.push(`/place/${item.id}`)} />
+            <PlaceCard
+              place={item}
+              parentName={item.parent_place_id ? parentNameById.get(item.parent_place_id) : null}
+              onPress={() => router.push(`/place/${item.id}`)}
+            />
           </View>
         )}
         ListEmptyComponent={
@@ -38,7 +44,7 @@ export default function PlacesScreen() {
           ) : isLoading ? (
             <ListSkeleton />
           ) : (
-            <EmptyState title={t('places.empty')} />
+            <EmptyState title={t('places.empty')} hint={t('places.emptyHint')} />
           )
         }
         contentContainerStyle={{ paddingHorizontal: spacing.sm, paddingBottom: spacing.xl }}

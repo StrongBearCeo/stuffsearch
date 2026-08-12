@@ -2,10 +2,11 @@
 import React, { useState } from 'react';
 import { View, FlatList } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Screen, H1, Input, Body, Muted, Card, ErrorBanner } from '../src/components/primitives';
+import { Screen, H1, Input, Body, Muted, Card, ErrorBanner, MaxWidth } from '../src/components/primitives';
 import { ItemCard } from '../src/components/ItemCard';
 import { VoiceButton } from '../src/components/VoiceButton';
 import { useItems } from '../src/hooks/useItems';
+import { usePlaces } from '../src/hooks/usePlaces';
 import { useSemanticSearch } from '../src/hooks/useSemanticSearch';
 import { useResponsive } from '../src/hooks/useResponsive';
 import { useHousehold } from '../src/lib/household';
@@ -31,13 +32,16 @@ export default function SearchScreen() {
 
   // Text search is local + fast; semantic search is LLM-backed.
   const text = useItems(q);
+  const { data: places } = usePlaces();
+  const placeNameById = new Map((places ?? []).map((p) => [p.id, p.name]));
   const semantic = useSemanticSearch(activeHouseholdId, q, q.trim().length > 1);
 
   const showSemantic = q.trim().length > 1 && !text.isLoading && (text.data?.length ?? 0) === 0;
 
   return (
     <Screen>
-      <View style={{ padding: spacing.lg, gap: 8 }}>
+      <View style={{ padding: spacing.lg, gap: 8, alignItems: 'center' }}>
+        <MaxWidth style={{ width: '100%', gap: 8 }}>
         <H1>{t('search.title')}</H1>
         <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
           <View style={{ flex: 1 }}>
@@ -45,6 +49,7 @@ export default function SearchScreen() {
           </View>
           <VoiceButton language={profile?.default_language ?? 'en'} onResult={setQ} />
         </View>
+        </MaxWidth>
       </View>
       <FlatList<SearchRow>
         data={showSemantic ? semantic.data ?? [] : text.data ?? []}
@@ -68,7 +73,11 @@ export default function SearchScreen() {
           }
           return (
             <View style={cellStyle}>
-              <ItemCard item={item} onPress={() => router.push(`/item/${item.id}`)} />
+              <ItemCard
+                item={item}
+                placeName={item.current_place_id ? placeNameById.get(item.current_place_id) : null}
+                onPress={() => router.push(`/item/${item.id}`)}
+              />
             </View>
           );
         }}

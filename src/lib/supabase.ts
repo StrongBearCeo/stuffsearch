@@ -9,7 +9,15 @@
 import { createClient } from '@supabase/supabase-js';
 import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
+import { splitIntoChunks, readFromChunks, chunkKeysFor } from './secureStorage';
 import type { Database, Tables, Enums } from './database.types';
+
+/** Minimal shape supabase-js requires of `auth.storage`. */
+type SupabaseStorageAdapter = {
+  getItem: (key: string) => Promise<string | null>;
+  setItem: (key: string, value: string) => Promise<void>;
+  removeItem: (key: string) => Promise<void>;
+};
 
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
@@ -24,8 +32,13 @@ if (!supabaseUrl || !supabaseAnonKey) {
 /**
  * Auth session storage. On native we use expo-secure-store (Keychain/Keystore);
  * on web SecureStore isn't available, so we fall back to AsyncStorage.
+ *
+ * Native note: a Supabase session JSON (access + refresh token + user) can
+ * exceed Keychain's ~2 KB per-key limit, so we route through the chunked
+ * adapter in ./secureStorage (split writes / manifest reads). Each individual
+ * keychain entry stays well under 2 KB.
  */
-const authStorage = Platform.OS === 'web'
+const authStorage: SupabaseStorageAdapter = Platform.OS === 'web'
   ? {
       getItem: async (key: string) => {
         const AsyncStorage = await import('@react-native-async-storage/async-storage');
@@ -41,9 +54,20 @@ const authStorage = Platform.OS === 'web'
       },
     }
   : {
-      getItem: (key: string) => SecureStore.getItemAsync(key),
-      setItem: (key: string, value: string) => SecureStore.setItemAsync(key, value),
-      removeItem: (key: string) => SecureStore.deleteItemAsync(key),
+      getItem: (key: string) => readFromChunks(key, (k) => SecureStore.getItemAsync(k)),
+      setItem: async (key: string, value: string) => {
+        const entries = splitIntoChunks(value, key);
+        await Promise.all(
+          entries.map(([k, v]) => SecureStore.setItemAsync(k, v)),
+        );
+      },
+      removeItem: async (key: string) => {
+        // Read the current value (if any) to learn how many chunks to delete;
+        // a plain deleteItemAsync(key) would orphan chunk follow-ons otherwise.
+        const current = await readFromChunks(key, (k) => SecureStore.getItemAsync(k));
+        const keys = current === null ? [key] : chunkKeysFor(key, current.length);
+        await Promise.all(keys.map((k) => SecureStore.deleteItemAsync(k)));
+      },
     };
 
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
@@ -51,7 +75,14 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
     storage: authStorage,
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: false,
+    // PKCE flow: signInWithOtp/signUp store a `code_verifier` in SecureStore and
+    // send a `code_challenge`; the email link redirects to our `confirm` route
+    // with a `?code=…` query param (NOT a fragment, which RN Linking strips),
+    // and `exchangeCodeForSession(url)` trades it for a session via /token.
+    flowType: 'pkce',
+    // Native: the `app/(auth)/confirm` route exchanges the PKCE code manually.
+    // Web: let supabase-js auto-parse the redirect URL on load.
+    detectSessionInUrl: Platform.OS === 'web',
   },
 });
 

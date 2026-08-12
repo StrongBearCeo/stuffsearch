@@ -6,6 +6,7 @@ import { Screen, H1, Card, Body, Muted, Button, MaxWidth } from '../../src/compo
 import { HouseholdSwitcher } from '../../src/components/HouseholdSwitcher';
 import { ItemCard } from '../../src/components/ItemCard';
 import { useItems } from '../../src/hooks/useItems';
+import { usePlaces } from '../../src/hooks/usePlaces';
 import { useResponsive } from '../../src/hooks/useResponsive';
 import { useHousehold } from '../../src/lib/household';
 import { colors, spacing } from '../../src/theme';
@@ -79,6 +80,8 @@ function RecentItems({ columns = 1 }: { columns?: number }) {
   const { t } = useTranslation();
   const router = useRouter();
   const { data, isLoading } = useItems();
+  const { data: places } = usePlaces();
+  const placeNameById = new Map((places ?? []).map((p) => [p.id, p.name]));
   return (
     <View style={{ gap: 8 }}>
       <Body style={{ fontWeight: '700' }}>{t('items.title')}</Body>
@@ -92,13 +95,22 @@ function RecentItems({ columns = 1 }: { columns?: number }) {
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
           {data.slice(0, 6).map((it: typeof data[number]) => (
             <View key={it.id} style={{ width: '48%', flexGrow: 1 }}>
-              <ItemCard item={it} onPress={() => router.push(`/item/${it.id}`)} />
+              <ItemCard
+                item={it}
+                placeName={it.current_place_id ? placeNameById.get(it.current_place_id) : null}
+                onPress={() => router.push(`/item/${it.id}`)}
+              />
             </View>
           ))}
         </View>
       ) : (
         data.slice(0, 5).map((it: typeof data[number]) => (
-          <ItemCard key={it.id} item={it} onPress={() => router.push(`/item/${it.id}`)} />
+          <ItemCard
+            key={it.id}
+            item={it}
+            placeName={it.current_place_id ? placeNameById.get(it.current_place_id) : null}
+            onPress={() => router.push(`/item/${it.id}`)}
+          />
         ))
       )}
     </View>

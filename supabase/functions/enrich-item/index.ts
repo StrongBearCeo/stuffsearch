@@ -57,8 +57,9 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const model = hasPhotos ? 'gpt-4o-mini' : 'gpt-4o-mini';
-    const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+    const baseURL = (Deno.env.get('OPENAI_BASE_URL') ?? 'https://api.openai.com/v1').replace(/\/+$/, '');
+    const model = Deno.env.get('OPENAI_CHAT_MODEL') ?? 'gpt-4o-mini';
+    const resp = await fetch(`${baseURL}/chat/completions`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${apiKey}`,
@@ -77,6 +78,18 @@ Deno.serve(async (req: Request) => {
     });
     if (!resp.ok) {
       const errText = await resp.text();
+      console.error(`[enrich-item] OpenAI chat ${resp.status}: ${errText}`);
+      try {
+        // Log via plain fetch (getServiceClient pulls supabase-js from esm.sh
+        // at runtime → Edge CPU EarlyDrop). Service role key bypasses RLS.
+        const baseUrl = (Deno.env.get('SUPABASE_URL') ?? '').replace(/\/+$/, '');
+        const sk = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+        await fetch(`${baseUrl}/rest/v1/edge_ai_errors`, {
+          method: 'POST',
+          headers: { apikey: sk, Authorization: `Bearer ${sk}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+          body: JSON.stringify({ fn: 'enrich-item', status: resp.status, body: errText }),
+        });
+      } catch { /* never block the error response */ }
       return json({ error: `OpenAI error: ${resp.status}`, detail: errText }, 502);
     }
     const data = await resp.json();

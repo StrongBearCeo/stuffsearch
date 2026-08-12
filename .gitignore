@@ -8,6 +8,12 @@ node_modules/
 dist/
 web-build/
 expo-env.d.ts.bak
+expo-env.d.ts
+app.d.ts
+
+# Native build output (prebuild / gradle)
+android/
+ios/
 
 # Native builds
 *.orig.*
@@ -28,6 +34,10 @@ supabase/.temp
 
 # ZCode workspace config (contains MCP secrets — never commit)
 .zcode/config.json
+# ZCode session screenshots / UI dumps / plan scratch (local only)
+.zcode/*.png
+.zcode/*.xml
+.zcode/plans/
 
 # IDE
 .idea/
@@ -50,3 +60,8 @@ coverage/
 
 # Generated
 app.d.ts
+
+# Local test / scratch artifacts
+*_qr.png
+test_qr.png
+proxmox-jobs.sqlite3*

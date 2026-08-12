@@ -72,8 +72,9 @@ All deployed with `verify_jwt = true` (caller must be signed in):
 - **Printing:** The Print screen renders PDF sheets of app-generated QR codes for items/places that don't yet have one (AirPrint / share). External codes are never reprinted.
 
 ## Scanning
-- The Scan tab uses `expo-camera`'s `CameraView` with barcode scanning enabled.
-- **Scan-to-assign:** set an "active place" (from a place detail screen), then scanning an item's code moves it there and writes an `item_history` row.
+- The Scan tab uses `expo-camera`'s `CameraView` with barcode scanning enabled, and is a pure resolver: a matched code opens the item/place; an unknown code offers to create one.
+- **Scan to set location:** from an item's detail screen, a scan button opens the camera; scanning a place's code sets that item's location (writes an `item_history` row via `useMoveItem`).
+- **Scan to add:** from a place's detail screen, a scan button opens the camera; scanning an item moves it into this place, scanning a place reparents it in here (places nest via `parent_place_id`; cycles are guarded by `wouldCreateCycle`), and an unknown code opens the new-item form with the place prefilled.
 - Manual code entry is available without a camera.
 
 ## Voice
@@ -87,7 +88,13 @@ English + Vietnamese (`src/locales/en.json`, `vi.json`) via `i18next` + `react-i
 npm start        # expo start
 npm run typecheck   # tsc --noEmit
 npm run lint     # eslint .
+npm test         # jest — pure-logic unit tests (src/lib/__tests__)
 ```
+
+## Testing
+Unit tests are required for any logic added or changed. Pure logic lives in
+`src/lib/` as importable functions (not inlined in components) and is covered by
+`src/lib/__tests__/*.test.ts`. See `AGENTS.md` for the full convention.
 
 ## ⚠️ Security — rotate before shipping
 The OpenAI API key and Supabase secret key were pasted in plaintext during initial setup. **Rotate both before this app sees real users:**
@@ -100,8 +107,7 @@ app/                 # expo-router screens (auth, tabs, item, place, search, ask
 src/
   lib/               # supabase client, auth, household, scanner, qrcode, codes, speech, llm, i18n, storage, offline
   hooks/             # useItems, usePlaces, useMembers, useScan, useVoice, useSemanticSearch, useExternalCode, useActiveHousehold
-  components/        # primitives, ItemCard, PlaceCard, ScanOverlay, VoiceButton, MemberRow, InviteQR, HouseholdSwitcher, BoundCodesList, CreateFromCodeSheet
-  store/             # Zustand UI store (active place)
+  components/        # primitives, ItemCard, PlaceCard, ScanOverlay, ScanCameraModal, VoiceButton, MemberRow, InviteQR, HouseholdSwitcher, BoundCodesList, CreateFromCodeSheet
   theme/             # color tokens, spacing, breakpoints
   locales/           # en.json, vi.json
 supabase/

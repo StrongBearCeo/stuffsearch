@@ -1,0 +1,23 @@
+{
+  "mcpServers": {
+    "qwen-vision": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "qwen-vision-mcp"
+      ],
+      "env": {
+        "QWEN_VISION_MODEL": "qwen3.5:cloud",
+        "OLLAMA_BASE_URL": "http://localhost:11434"
+      }
+    },
+    "expo": {
+      "type": "http",
+      "url": "https://mcp.expo.dev/mcp"
+    },
+    "supabase": {
+      "type": "http",
+      "url": "https://mcp.supabase.com/mcp?project_ref=dkbhzfcznwxfumfcaifs&features=docs%2Caccount%2Cdatabase%2Cdebugging%2Cdevelopment%2Cfunctions%2Cbranching"
+    }
+  }
+}
