@@ -65,3 +65,6 @@ app.d.ts
 *_qr.png
 test_qr.png
 proxmox-jobs.sqlite3*
+
+# Local release-signing credentials — NEVER commit
+keystore.properties

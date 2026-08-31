@@ -21,6 +21,7 @@ import type { Session, User } from '@supabase/supabase-js';
 import * as Linking from 'expo-linking';
 import { router } from 'expo-router';
 import { supabase, type Profile } from './supabase';
+import { parseAuthDeepLink } from './authLink';
 
 /**
  * Where Supabase email/magic-link redirects should land. Auto-adapts to the
@@ -29,9 +30,6 @@ import { supabase, type Profile } from './supabase';
  * PKCE code for a session.
  */
 const redirectTo = Linking.createURL('/confirm');
-// TEMP DEBUG: confirm the exact emailRedirectTo we send to Supabase.
-// Remove once the end-to-end flow is verified.
-console.log('[auth] emailRedirectTo =', redirectTo);
 
 interface AuthContextValue {
   session: Session | null;
@@ -73,19 +71,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Handle Supabase email/magic-link deep links at the root, independent of
     // expo-router path matching (see file header for the slash-canonicalization
     // rationale). The link may arrive as `stuffsearch:///confirm?code=…`
-    // (path form) or `stuffsearch://confirm?code=…` (host form); either way
-    // exchangeCodeForSession parses the `code` query param.
+    // (path form) or `stuffsearch://confirm?code=…` (host form); parseAuthDeepLink
+    // pulls the `code` out of either shape.
+    // A cold start delivers the link via getInitialURL and a warm one via the
+    // `url` event, but both can fire for a single link. The PKCE verifier is
+    // single-use and auth-js deletes it on the first exchange, so a second
+    // attempt on the same code would fail and bounce a successfully signed-in
+    // user to the error screen. Exchange each code at most once.
+    const handledCodes = new Set<string>();
+
     const handleAuthLink = (raw: string | null) => {
-      if (!raw) return;
-      // TEMP DEBUG: see the exact incoming deep link + exchange result.
-      // Remove once the end-to-end flow is verified.
-      console.log('[auth] deep link =', raw);
-      // Only act on Supabase auth redirects (PKCE `code` or implicit/error params).
-      if (!/[?&](code|error|error_code|error_description|access_token)=/.test(raw)) return;
+      const link = parseAuthDeepLink(raw);
+      // Not an auth redirect (e.g. a `stuffsearch://item/…` scan link) — leave
+      // it for expo-router.
+      if (!link) return;
+
+      if (link.kind === 'error') {
+        setLinkError(link.message);
+        router.replace('/(auth)/confirm');
+        return;
+      }
+
+      // Pass the CODE, never the whole URL: auth-js posts this straight through
+      // as `auth_code`, and on failure deletes the stored PKCE verifier, which
+      // breaks every subsequent attempt too.
+      if (handledCodes.has(link.code)) return;
+      handledCodes.add(link.code);
+
       supabase.auth
-        .exchangeCodeForSession(raw)
-        .then(({ data, error }) => {
-          console.log('[auth] exchange =', { error: error?.message, hasSession: !!data?.session });
+        .exchangeCodeForSession(link.code)
+        .then(({ error }) => {
           if (error) {
             setLinkError(error.message);
             router.replace('/(auth)/confirm');
@@ -94,7 +109,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           router.replace('/');
         })
         .catch((e) => {
-          console.log('[auth] exchange threw =', e?.message);
           setLinkError(e?.message ?? 'Exchange failed');
           router.replace('/(auth)/confirm');
         });

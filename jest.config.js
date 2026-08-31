@@ -3,7 +3,11 @@
  * Tests run as plain TypeScript with no RN runtime. */
 module.exports = {
   testEnvironment: 'node',
-  testMatch: ['<rootDir>/src/**/*.test.{ts,tsx}'],
+  testMatch: [
+    '<rootDir>/src/**/*.test.{ts,tsx}',
+    // Expo config plugins (CommonJS, build-time) are unit-tested too.
+    '<rootDir>/plugins/**/*.test.js',
+  ],
   setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',

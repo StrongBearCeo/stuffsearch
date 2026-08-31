@@ -70,6 +70,7 @@ All deployed with `verify_jwt = true` (caller must be signed in):
 - **Switching:** A user can belong to several households; the on-screen switcher swaps the active scope.
 - **External codes:** Scan any barcode → bind it to an item or place. EAN/UPC codes trigger an optional product lookup. Codes are unique per household; on cross-household match you get a "switch & open?" prompt.
 - **Printing:** The Print screen renders PDF sheets of app-generated QR codes for items/places that don't yet have one (AirPrint / share). External codes are never reprinted.
+- **Preprinted labels:** `npm run labels` generates cut-apart sheets of blank `SS-XXXXXXXX` QR labels (`dist/labels/stuffsearch-labels-{a4,letter}.pdf`, ~154 A4 labels/page) you can print on a laser printer and stick on anything before it exists in the app. Stick → scan → the unknown-code sheet offers "create with this code" (or attach from an item/place detail screen). Printed values are tracked in `dist/labels/printed-values.json` so batches never repeat. Regenerate with `--pages N --module 0.6` etc.; verify sheets with `scripts/verify-label-pdfs.py`.
 
 ## Scanning
 - The Scan tab uses `expo-camera`'s `CameraView` with barcode scanning enabled, and is a pure resolver: a matched code opens the item/place; an unknown code offers to create one.
@@ -89,7 +90,20 @@ npm start        # expo start
 npm run typecheck   # tsc --noEmit
 npm run lint     # eslint .
 npm test         # jest — pure-logic unit tests (src/lib/__tests__)
+npm run labels   # regenerate preprinted label PDFs (needs python + reportlab)
 ```
+
+## Deploying to a phone
+Standalone builds that run without a Metro / Expo dev server, and without a paid
+Apple or Google developer account: see **[DEPLOY.md](DEPLOY.md)**.
+
+```powershell
+cd android; .\gradlew.bat assembleRelease   # -> app/build/outputs/apk/release/
+.\scripts\install-android.ps1                # install over USB or Wi-Fi
+```
+
+iOS needs a Mac — `./scripts/mac-ios-build.sh sim` for a never-expiring Simulator
+build, or `device` for a real iPhone (Apple expires free-signed apps after 7 days).
 
 ## Testing
 Unit tests are required for any logic added or changed. Pure logic lives in

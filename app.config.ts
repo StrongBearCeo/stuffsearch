@@ -85,6 +85,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         android: { newArchEnabled: true },
       },
     ],
+    // Signs release APKs with the local keystore (see keystore.properties).
+    './plugins/withAndroidReleaseSigning',
   ],
   experiments: {
     tsconfigPaths: true,
