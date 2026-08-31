@@ -22,6 +22,7 @@ import * as Linking from 'expo-linking';
 import { router } from 'expo-router';
 import { supabase, type Profile } from './supabase';
 import { parseAuthDeepLink } from './authLink';
+import { bootstrapSession } from './authBootstrap';
 
 /**
  * Where Supabase email/magic-link redirects should land. Auto-adapts to the
@@ -38,6 +39,9 @@ interface AuthContextValue {
   loading: boolean;
   /** Error from the last deep-link code exchange, if it failed. */
   linkError: string | null;
+  /** Error from the session bootstrap, if it threw (would otherwise hang the
+   *  loading spinner forever in a release build where the rejection is silent). */
+  initError: Error | null;
   signInWithPassword: (email: string, password: string) => Promise<void>;
   signUpWithPassword: (
     email: string,
@@ -56,17 +60,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [linkError, setLinkError] = useState<string | null>(null);
+  const [initError, setInitError] = useState<Error | null>(null);
 
   // Bootstrap session, then subscribe to auth changes.
   useEffect(() => {
     let active = true;
-    (async () => {
-      const { data } = await supabase.auth.getSession();
-      if (!active) return;
-      setSession(data.session);
-      if (data.session?.user) await loadProfile(data.session.user.id);
-      setLoading(false);
-    })();
+    // Delegated to bootstrapSession (pure/testable): the loading gate unblocks
+    // as soon as getSession resolves, without waiting on the profile network
+    // fetch. See authBootstrap.ts for the rationale.
+    bootstrapSession({
+      getSession: () => supabase.auth.getSession(),
+      loadProfile,
+      setSession,
+      setLoading,
+      setInitError,
+      isActive: () => active,
+    });
 
     // Handle Supabase email/magic-link deep links at the root, independent of
     // expo-router path matching (see file header for the slash-canonicalization
@@ -116,9 +125,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     Linking.getInitialURL().then(handleAuthLink).catch(() => {});
     const linkSub = Linking.addEventListener('url', ({ url }) => handleAuthLink(url));
 
-    const { data: sub } = supabase.auth.onAuthStateChange(async (_e, s) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
       setSession(s);
-      if (s?.user) await loadProfile(s.user.id);
+      if (s?.user) loadProfile(s.user.id).catch(() => {});
       else setProfile(null);
     });
     return () => {
@@ -149,6 +158,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       profile,
       loading,
       linkError,
+      initError,
       async signInWithPassword(email, password) {
         const { error } = await supabase.auth.signInWithPassword({
           email,
@@ -181,7 +191,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       refreshProfile,
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [session, profile, loading, linkError],
+    [session, profile, loading, linkError, initError],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
