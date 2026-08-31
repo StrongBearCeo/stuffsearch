@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "test": "jest",
-    "labels": "npx -y tsx scripts/make-label-sheets.ts"
+    "labels": "npx -y tsx scripts/make-label-sheets.ts",
+    "backup": "npx -y tsx scripts/backup-supabase.ts"
   },
   "dependencies": {
     "@expo/ngrok": "^4.1.3",

@@ -32,6 +32,9 @@ ios/
 supabase/.branches
 supabase/.temp
 
+# Local database backups (contain user data — never commit)
+backups/
+
 # ZCode workspace config (contains MCP secrets — never commit)
 .zcode/config.json
 # ZCode session screenshots / UI dumps / plan scratch (local only)
