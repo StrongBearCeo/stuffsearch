@@ -1,9 +1,12 @@
 /** Items CRUD hooks, scoped to the active household. */
+import { useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase, type Item, type ItemHistory, type TablesInsert, type TablesUpdate } from '../lib/supabase';
 import { useHousehold } from '../lib/household';
 import { useAuth } from '../lib/auth';
 import { generateQrToken } from '../lib/qrcode';
+import { rankBySearch, type SearchFields } from '../lib/search';
+import { lookupColumnFor } from '../lib/ids';
 import { buildMovedNote, buildNote, type HistoryNoteKey } from '../lib/historyNote';
 
 const KEY = ['items'] as const;
@@ -17,31 +20,63 @@ async function placeNameById(id: string | null): Promise<string | null> {
   return data.name as string;
 }
 
+/** What `rankBySearch` looks at on an item. */
+function itemSearchFields(item: Item): SearchFields {
+  return {
+    name: item.name,
+    description: item.description,
+    category: item.category,
+    tags: item.tags,
+  };
+}
+
+/**
+ * All items in the active household, optionally filtered by a search string.
+ *
+ * The query itself is unfiltered and cached per household; filtering happens in
+ * `select` via the token-scoring ranker. Server-side `ilike '%query%'` only
+ * matched a contiguous substring, so "Husky tile cutter" missed "Tile cutter" —
+ * see src/lib/search.ts. Ranking locally is also instant and works offline.
+ */
 export function useItems(search?: string) {
+  const select = useCallback(
+    (rows: Item[]) => rankBySearch(rows, search ?? '', itemSearchFields),
+    [search],
+  );
   const { activeHouseholdId } = useHousehold();
-  return useQuery<Item[]>({
-    queryKey: [...KEY, activeHouseholdId, search ?? ''],
+  return useQuery<Item[], Error, Item[]>({
+    queryKey: [...KEY, activeHouseholdId],
     enabled: !!activeHouseholdId,
     queryFn: async () => {
       if (!activeHouseholdId) return [];
-      let q = supabase.from('items').select('*').eq('household_id', activeHouseholdId);
-      if (search && search.trim()) {
-        q = q.or(`name.ilike.%${search}%,description.ilike.%${search}%,category.ilike.%${search}%`);
-      }
-      const { data, error } = await q.order('updated_at', { ascending: false });
+      const { data, error } = await supabase
+        .from('items')
+        .select('*')
+        .eq('household_id', activeHouseholdId)
+        .order('updated_at', { ascending: false });
       if (error) throw error;
       return data ?? [];
     },
+    select,
   });
 }
 
+/**
+ * One item by route parameter. Accepts either the uuid primary key (from a
+ * list) or an app `qr_token` (from a scanned deep-link, which routes to
+ * `/item/<token>`) — see src/lib/ids.ts.
+ */
 export function useItem(id: string | undefined) {
   return useQuery<Item | null>({
     queryKey: [...KEY, id],
     enabled: !!id,
     queryFn: async () => {
       if (!id) return null;
-      const { data, error } = await supabase.from('items').select('*').eq('id', id).maybeSingle();
+      const { data, error } = await supabase
+        .from('items')
+        .select('*')
+        .eq(lookupColumnFor(id), id)
+        .maybeSingle();
       if (error) throw error;
       return data;
     },
@@ -79,7 +114,16 @@ export function useCreateItem() {
         category: input.category,
         photo_urls: input.photo_urls ?? [],
         product_link: input.product_link,
-        qr_token: input.qr_token ?? generateQrToken(),
+        product_links: input.product_links ?? [],
+        tags: input.tags ?? [],
+        estimated_value: input.estimated_value,
+        value_currency: input.value_currency,
+        value_source: input.value_source,
+        value_updated_at: input.value_updated_at,
+        // An app QR code is OPTIONAL: a new item starts with no code at all.
+        // The user generates one, or scans an existing label, from the item
+        // screen. Only an explicitly supplied token is used here.
+        qr_token: input.qr_token ?? null,
         current_place_id: input.current_place_id,
         metadata: input.metadata ?? {},
         created_by: user?.id,
@@ -113,6 +157,35 @@ export function useUpdateItem() {
         .from('items')
         .update(patch)
         .eq('id', id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: KEY });
+      qc.invalidateQueries({ queryKey: [...KEY, data.id] });
+      // A renamed/retagged item shows differently inside its place too.
+      qc.invalidateQueries({ queryKey: ['place_contents'] });
+    },
+  });
+}
+
+/**
+ * Give an item an app-generated QR token. Items are created without one now
+ * (codes are opt-in), so this is how the "Generate code" action on the item
+ * screen mints one. No-op semantics if the item already has a token: the
+ * caller checks first, so a regenerate would orphan printed labels.
+ */
+export function useGenerateItemCode() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (itemId: string) => {
+      const token = generateQrToken();
+      const { data, error } = await supabase
+        .from('items')
+        .update({ qr_token: token })
+        .eq('id', itemId)
         .select()
         .single();
       if (error) throw error;
@@ -197,6 +270,9 @@ export function useDeleteItem() {
       const { error } = await supabase.from('items').delete().eq('id', id);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: KEY });
+      qc.invalidateQueries({ queryKey: ['place_contents'] });
+    },
   });
 }

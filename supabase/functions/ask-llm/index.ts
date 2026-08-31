@@ -106,6 +106,8 @@ Deno.serve(async (req: Request) => {
     });
     if (!error && data) matches = data;
   }
+  // No embeddings (nothing populates items.embedding yet) → token-scored
+  // relevance search in Postgres. See migration 0007 for fts_search.
   if (!matches.length) {
     const { data: fts } = await db.rpc<Match[]>('fts_search', {
       _household_id: householdId,
@@ -115,9 +117,23 @@ Deno.serve(async (req: Request) => {
     if (fts) matches = fts;
   }
   if (!matches.length) {
+    // Last resort: OR the question's individual words rather than the whole
+    // phrase. A single `ilike '%husky tile cutter%'` only matches a contiguous
+    // run of characters, so an extra brand word made a present item invisible.
+    const tokens = [
+      ...new Set(
+        question
+          .toLowerCase()
+          .split(/[^\p{L}\p{N}]+/u)
+          .filter((w) => w.length >= 2),
+      ),
+    ].slice(0, 8);
+    const or = (tokens.length ? tokens : [question])
+      .map((w) => `name.ilike.*${encodeURIComponent(w)}*,description.ilike.*${encodeURIComponent(w)}*`)
+      .join(',');
     const like = await db.select<{ id: string; name: string; current_place_id: string | null }>(
       'items',
-      `select=id,name,current_place_id&household_id=eq.${encodeURIComponent(householdId)}&or=(name.ilike.*${encodeURIComponent(question)}*,description.ilike.*${encodeURIComponent(question)}*)&limit=15`,
+      `select=id,name,current_place_id&household_id=eq.${encodeURIComponent(householdId)}&or=(${or})&limit=15`,
     );
     matches = like.map((r) => ({ item_id: r.id, name: r.name, current_place_id: r.current_place_id }));
   }
@@ -145,10 +161,19 @@ Deno.serve(async (req: Request) => {
     .join('\n');
 
   const langName = language === 'vi' ? 'Vietnamese' : 'English';
+  // Near matches matter: the retrieval step is deliberately generous (it scores
+  // per token), so the list often holds the right thing under a slightly
+  // different name — "Tile cutter" for a question about a "Husky tile cutter".
+  // Without this instruction the model answered "I couldn't find it" while the
+  // item sat at the top of the very list it was given.
   const systemPrompt =
     `You are a household inventory assistant. Answer the user's question about where things are, ` +
     `based ONLY on the inventory list provided. Be specific and concise. ` +
-    `If the item isn't listed, say you couldn't find it. ` +
+    `The list is ranked by relevance and may not contain an exact name match. ` +
+    `If an entry is clearly the same kind of thing the user is asking about — even if the ` +
+    `brand, model or wording differs — treat it as the answer, give its location, and note ` +
+    `briefly that the recorded name differs. ` +
+    `Only say you couldn't find it when nothing in the list plausibly matches. ` +
     `Respond in ${langName}.`;
 
   const userPrompt = `Inventory:\n${inventory || '(empty)'}\n\nQuestion: ${question}`;

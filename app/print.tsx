@@ -1,8 +1,9 @@
 /** Print screen: pick items/places (that have an app QR token) and print/share
  *  a PDF sheet of their QR labels.
  *
- *  Only entities WITH a qr_token are listed — you can't print a code for
- *  something that doesn't have one. (Items/places get a token on creation.) */
+ *  Only entities WITH a qr_token are listed — you cannot print a code for
+ *  something that does not have one. Codes are opt-in now: an item or place
+ *  gets a token when the user taps "Generate app code" on its own screen. */
 import React, { useMemo, useState } from 'react';
 import { View, ScrollView, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 import * as Print from 'expo-print';

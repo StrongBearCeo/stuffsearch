@@ -1,6 +1,6 @@
 /** Global search: text + voice + semantic results. */
 import React, { useState } from 'react';
-import { View, FlatList } from 'react-native';
+import { View, FlatList, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Screen, H1, Input, Body, Muted, Card, ErrorBanner, MaxWidth } from '../src/components/primitives';
 import { ItemCard } from '../src/components/ItemCard';
@@ -36,7 +36,10 @@ export default function SearchScreen() {
   const placeNameById = new Map((places ?? []).map((p) => [p.id, p.name]));
   const semantic = useSemanticSearch(activeHouseholdId, q, q.trim().length > 1);
 
+  // Exact/near text matches first; only when the local ranker finds nothing do
+  // we fall back to the server's relevance search.
   const showSemantic = q.trim().length > 1 && !text.isLoading && (text.data?.length ?? 0) === 0;
+  const rows: SearchRow[] = showSemantic ? semantic.data ?? [] : text.data ?? [];
 
   return (
     <Screen>
@@ -49,10 +52,13 @@ export default function SearchScreen() {
           </View>
           <VoiceButton language={profile?.default_language ?? 'en'} onResult={setQ} />
         </View>
+        {q.trim().length > 1 && !text.isLoading ? (
+          <Muted>{t('items.count', { count: rows.length })}</Muted>
+        ) : null}
         </MaxWidth>
       </View>
       <FlatList<SearchRow>
-        data={showSemantic ? semantic.data ?? [] : text.data ?? []}
+        data={rows}
         key={`cols-${columns}`}
         numColumns={columns}
         keyExtractor={(i) => (isSemantic(i) ? i.item_id : i.id)}
@@ -60,14 +66,25 @@ export default function SearchScreen() {
           const cellStyle = { flex: 1 / columns, padding: spacing.sm };
           // semantic results have item_id + score; text results are Item rows.
           if (isSemantic(item)) {
+            // Related (not exact) hits from the server-side relevance search.
+            // Tappable, like every other result row.
             return (
               <View style={cellStyle}>
-                <Card>
-                  <Body style={{ fontWeight: '600' }}>{item.name}</Body>
-                  <Muted>
-                    {t('search.semantic')} · {Math.round(item.score * 100)}%
-                  </Muted>
-                </Card>
+                <TouchableOpacity
+                  onPress={() => router.push(`/item/${item.item_id}` as never)}
+                  accessibilityRole="button"
+                  accessibilityLabel={item.name}
+                >
+                  <Card>
+                    <Body style={{ fontWeight: '600' }}>{item.name}</Body>
+                    <Muted>
+                      {item.current_place_id
+                        ? placeNameById.get(item.current_place_id) ?? t('items.located')
+                        : t('items.notLocated')}
+                    </Muted>
+                    <Muted style={{ fontSize: 11 }}>{t('search.related')}</Muted>
+                  </Card>
+                </TouchableOpacity>
               </View>
             );
           }

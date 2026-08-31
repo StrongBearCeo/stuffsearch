@@ -1,59 +1,92 @@
-/** Place detail: contents + child places + info + edit/delete.
+/** Place detail: contents + child places + info + codes + edit/delete.
  *  Scan-to-add: scanning an item moves it in here; scanning a place reparents
- *  it in here; an unknown code opens the new-item form with this place prefilled. */
+ *  it in here; an unknown code opens the new-item form with this place prefilled.
+ *
+ *  Anything that can't be applied (a cycle, a foreign household, a code that's
+ *  already bound) is reported through `scanNotice`, which renders OVER the live
+ *  camera and re-arms the scanner — previously those messages were queued
+ *  behind the modal and only appeared after the user gave up and closed it. */
 import React, { useState } from 'react';
 import { View, ScrollView, Text, TouchableOpacity, Alert, Share } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import QRCode from 'react-native-qrcode-svg';
 import { H2, Body, Muted, Card, Screen, MaxWidth, Button, ErrorBanner } from '../../src/components/primitives';
 import { ExpoImage } from '../../src/components/ExpoImage';
+import { PhotoViewer } from '../../src/components/PhotoViewer';
 import { ItemCard } from '../../src/components/ItemCard';
 import { BoundCodesList } from '../../src/components/BoundCodesList';
+import { TagList } from '../../src/components/Tags';
 import { ScanCameraModal } from '../../src/components/ScanCameraModal';
-import { usePlace, usePlaceContents, usePlaceChildren, usePlaces, useDeletePlace, useUpdatePlace } from '../../src/hooks/usePlaces';
+import { usePlace, usePlaceContents, usePlaceChildren, usePlaces, useDeletePlace, useUpdatePlace, useGeneratePlaceCode } from '../../src/hooks/usePlaces';
 import { useMoveItem } from '../../src/hooks/useItems';
 import { useScan } from '../../src/hooks/useScan';
 import { scannerTypeToCodeType } from '../../src/lib/constants';
-import { useExternalCodes, useUnbindExternalCode } from '../../src/hooks/useExternalCode';
+import { classifyScanForBinding } from '../../src/lib/bindCode';
+import { useExternalCodes, useBindExternalCode, useUnbindExternalCode } from '../../src/hooks/useExternalCode';
 import { useHousehold } from '../../src/lib/household';
+import { useAuth } from '../../src/lib/auth';
 import { appQrPayload } from '../../src/lib/qrcode';
 import { printAndShareCode } from '../../src/lib/print';
 import { wouldCreateCycle, indexPlaces } from '../../src/lib/places';
+import { summarizeValue, formatTotals } from '../../src/lib/value';
 import type { Item, Place } from '../../src/lib/supabase';
 import { colors, spacing, radius, tint } from '../../src/theme';
 import { useTranslation } from 'react-i18next';
 import { useHeaderTitle } from '../../src/lib/useHeaderTitle';
 import { hapticSuccess, hapticWarning } from '../../src/lib/haptics';
 
+/** Which job the shared camera modal is doing. */
+type ScanMode = 'add' | 'location' | 'code' | null;
+
 export default function PlaceDetailScreen() {
   const { t } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
   useHeaderTitle(t('places.title'));
   const { activeHouseholdId } = useHousehold();
+  const { user } = useAuth();
   const { data: place, isLoading, error } = usePlace(id);
-  const { data: contents } = usePlaceContents(id);
-  const { data: children } = usePlaceChildren(id);
+  // `id` may be an app qr_token (a scanned deep-link routes to /place/<token>),
+  // so every dependent query keys off the RESOLVED row id, not the route param.
+  const placeId = place?.id;
+  const { data: contents } = usePlaceContents(placeId);
+  const { data: children } = usePlaceChildren(placeId);
   const { data: allPlaces } = usePlaces();
-  const { data: codes } = useExternalCodes(activeHouseholdId, 'place', id);
+  const { data: codes } = useExternalCodes(activeHouseholdId, 'place', placeId);
   const deletePlace = useDeletePlace();
   const updatePlace = useUpdatePlace();
+  const generateCode = useGeneratePlaceCode();
   const moveItem = useMoveItem();
-  const unbind = useUnbindExternalCode('place', id);
-  const { resolve } = useScan();
+  const bind = useBindExternalCode();
+  const unbind = useUnbindExternalCode('place', placeId ?? id);
+  const { resolve, resolving } = useScan();
 
-  const [scanOpen, setScanOpen] = useState(false);
-  const [locScanOpen, setLocScanOpen] = useState(false);
+  const [scanMode, setScanMode] = useState<ScanMode>(null);
+  const [scanNotice, setScanNotice] = useState<string | null>(null);
   const [movePicker, setMovePicker] = useState(false);
   const [prompt, setPrompt] = useState<string | null>(null);
+  const [viewerOpen, setViewerOpen] = useState(false);
 
   if (isLoading) return <Screen><View style={{ padding: 16 }}><Muted>{t('common.loading')}</Muted></View></Screen>;
   if (error) return <Screen><View style={{ padding: 16 }}><ErrorBanner message={(error as Error).message} /></View></Screen>;
   if (!place) return <Screen><View style={{ padding: 16 }}><Muted>{t('errors.notFound')}</Muted></View></Screen>;
 
-  // The place's own app-QR deep-link (for display + share + print). Computed once.
+  // The place's own app-QR deep-link. Optional — places are created without a
+  // code and only get one on request.
   const placeQrPayload = place.qr_token
     ? appQrPayload('place', place.qr_token, activeHouseholdId ?? undefined)
     : null;
+  const contentSummary = summarizeValue(contents ?? []);
+  const contentTotals = formatTotals(contentSummary.totals);
+
+  function openScanner(mode: Exclude<ScanMode, null>) {
+    setScanNotice(null);
+    setScanMode(mode);
+  }
+
+  function closeScanner() {
+    setScanMode(null);
+    setScanNotice(null);
+  }
 
   function onDelete() {
     Alert.alert(t('common.delete'), place!.name, [
@@ -86,35 +119,36 @@ export default function PlaceDetailScreen() {
   async function onScanLocation(payload: string) {
     const o = await resolve(payload);
     if (!o) {
-      setLocScanOpen(false);
+      setScanNotice(t('errors.generic'));
       return;
     }
     if (o.type === 'matched') {
       const m = o.matches[0];
       if (m.entity_type !== 'place') {
         hapticWarning();
-        setPrompt(t('places.scanNotAPlace'));
+        setScanNotice(t('places.scanNotAPlace'));
         return; // keep camera open so the user can retry
       }
       if (!o.inActiveHousehold) {
         hapticWarning();
-        setPrompt(t('scanResolve.switchPrompt', { name: '', household: '' }));
+        setScanNotice(t('scanResolve.otherHousehold'));
         return;
       }
       if (wouldCreateCycle(place!.id, m.entity_id, indexPlaces(allPlaces ?? []))) {
         hapticWarning();
-        setPrompt(m.entity_id === place!.id ? t('places.scanSelf') : t('places.scanCycle'));
+        setScanNotice(m.entity_id === place!.id ? t('places.scanSelf') : t('places.scanCycle'));
         return;
       }
       updatePlace.mutate(
         { id: place!.id, patch: { parent_place_id: m.entity_id } },
         { onSuccess: () => { hapticSuccess(); setPrompt(t('places.scannedToPlace')); } },
       );
-      setLocScanOpen(false);
+      setScanMode(null);
     } else if (o.type === 'no-match') {
       hapticWarning();
-      setPrompt(t('scan.unknownHint'));
-      setLocScanOpen(false);
+      setScanNotice(t('scan.unknownHint'));
+    } else {
+      setScanNotice(t('places.scanNotAPlace'));
     }
   }
 
@@ -141,14 +175,20 @@ export default function PlaceDetailScreen() {
   async function onScanAdd(payload: string, rawType?: string) {
     const o = await resolve(payload);
     if (!o) {
-      setScanOpen(false);
+      setScanNotice(t('errors.generic'));
+      return;
+    }
+    if (o.type === 'deep-link') {
+      // An app QR for an item/place resolves through the scan tab; here we only
+      // act on codes that map to a household entity.
+      setScanNotice(t('scan.unknownHint'));
       return;
     }
     if (o.type === 'matched') {
       const m = o.matches[0];
       if (!o.inActiveHousehold) {
         hapticWarning();
-        setPrompt(t('scanResolve.switchPrompt', { name: '', household: '' }));
+        setScanNotice(t('scanResolve.otherHousehold'));
         return;
       }
       if (m.entity_type === 'item') {
@@ -159,14 +199,15 @@ export default function PlaceDetailScreen() {
               hapticSuccess();
               setPrompt(t('places.scannedItemIn'));
             },
+            onError: (e) => setScanNotice(e instanceof Error ? e.message : t('errors.generic')),
           },
         );
-        setScanOpen(false);
+        setScanMode(null);
       } else {
         // scanned a place → reparent it into this one
         if (wouldCycle(m.entity_id)) {
           hapticWarning();
-          setPrompt(m.entity_id === place!.id ? t('places.scanSelf') : t('places.scanCycle'));
+          setScanNotice(m.entity_id === place!.id ? t('places.scanSelf') : t('places.scanCycle'));
           return;
         }
         updatePlace.mutate(
@@ -176,13 +217,14 @@ export default function PlaceDetailScreen() {
               hapticSuccess();
               setPrompt(t('places.scannedPlaceIn'));
             },
+            onError: (e) => setScanNotice(e instanceof Error ? e.message : t('errors.generic')),
           },
         );
-        setScanOpen(false);
+        setScanMode(null);
       }
     } else if (o.type === 'no-match') {
       // Open the new-item form with the code + this place prefilled.
-      setScanOpen(false);
+      setScanMode(null);
       router.push({
         pathname: '/item/new',
         params: {
@@ -194,20 +236,81 @@ export default function PlaceDetailScreen() {
     }
   }
 
+  /** Scan a code to ADD it to this place. A place may carry many codes. */
+  async function onScanAddCode(payload: string, rawType?: string) {
+    if (!activeHouseholdId || !user) return;
+    const o = await resolve(payload);
+    if (!o) {
+      setScanNotice(t('errors.generic'));
+      return;
+    }
+    const c = classifyScanForBinding(o, { entityType: 'place', entityId: place!.id });
+    if (c.kind === 'already-here') {
+      hapticWarning();
+      setScanNotice(t('codes.alreadyBound'));
+      return;
+    }
+    if (c.kind === 'bound-elsewhere') {
+      hapticWarning();
+      setScanNotice(t('codes.boundElsewhere'));
+      return;
+    }
+    if (c.kind === 'app-code') {
+      hapticWarning();
+      setScanNotice(t('codes.appCode'));
+      return;
+    }
+    try {
+      await bind.mutateAsync({
+        householdId: activeHouseholdId,
+        codeValue: c.codeValue,
+        codeType: scannerTypeToCodeType(rawType ?? 'other'),
+        entityType: 'place',
+        entityId: place!.id,
+        boundBy: user.id,
+      });
+      hapticSuccess();
+      setScanMode(null);
+      setPrompt(t('codes.added'));
+    } catch (e) {
+      setScanNotice(e instanceof Error ? e.message : t('errors.generic'));
+    }
+  }
+
+  const scanHandlers: Record<Exclude<ScanMode, null>, (p: string, r?: string) => void> = {
+    add: onScanAdd,
+    location: onScanLocation,
+    code: onScanAddCode,
+  };
+  const scanHints: Record<Exclude<ScanMode, null>, string> = {
+    add: t('places.scanToAdd'),
+    location: t('places.scanSetLocation'),
+    code: t('codes.addByScan'),
+  };
+
   return (
     <Screen>
       <ScrollView contentContainerStyle={{ alignItems: 'center' }}>
         <MaxWidth style={{ padding: spacing.lg, gap: 12, paddingBottom: 40 }}>
         {place.photo_url ? (
-          <ExpoImage uri={place.photo_url} style={{ width: '100%', height: 180, borderRadius: radius.mdLg }} />
+          <TouchableOpacity
+            onPress={() => setViewerOpen(true)}
+            accessibilityRole="imagebutton"
+            accessibilityLabel={t('photos.viewFull')}
+          >
+            <ExpoImage uri={place.photo_url} style={{ width: '100%', height: 180, borderRadius: radius.mdLg }} />
+          </TouchableOpacity>
         ) : null}
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
           <View style={{ flex: 1 }}>
             <H2>{place.name}</H2>
-            {place.description ? <Muted>{place.description}</Muted> : null}
           </View>
           <Button title={t('common.edit')} variant="ghost" onPress={() => router.push({ pathname: '/place/new', params: { id: place.id } } as never)} />
         </View>
+        {/* Description on its own row so a long one wraps instead of being
+            squeezed (and clipped) next to the Edit button. */}
+        {place.description ? <Body>{place.description}</Body> : null}
+        <TagList tags={place.tags} />
 
         {/* Location card: where this place lives (its parent place). */}
         {(() => {
@@ -219,7 +322,15 @@ export default function PlaceDetailScreen() {
                 <View style={{ flex: 1 }}>
                   <Muted style={{ fontSize: 11, textTransform: 'uppercase' }}>{t('places.parent')}</Muted>
                   {parent ? (
-                    <Body style={{ fontWeight: '700', fontSize: 17 }}>{parent.name}</Body>
+                    <TouchableOpacity
+                      onPress={() => router.push(`/place/${parent.id}` as never)}
+                      accessibilityRole="link"
+                      accessibilityLabel={`${t('items.openPlace')}: ${parent.name}`}
+                    >
+                      <Body style={{ fontWeight: '700', fontSize: 17, color: colors.primary }}>
+                        {parent.name} ›
+                      </Body>
+                    </TouchableOpacity>
                   ) : (
                     <Body style={{ fontStyle: 'italic', color: colors.textMuted }}>{t('places.none')}</Body>
                   )}
@@ -231,7 +342,7 @@ export default function PlaceDetailScreen() {
                   variant="ghost"
                   onPress={() => setMovePicker(!movePicker)}
                 />
-                <Button title={t('places.scanSetLocation')} variant="ghost" onPress={() => setLocScanOpen(true)} />
+                <Button title={t('places.scanSetLocation')} variant="ghost" onPress={() => openScanner('location')} />
               </View>
               {movePicker ? (
                 <View style={{ marginTop: 12, gap: 4 }}>
@@ -246,7 +357,7 @@ export default function PlaceDetailScreen() {
           );
         })()}
 
-        <Button title={t('places.scanToAdd')} onPress={() => setScanOpen(true)} />
+        <Button title={t('places.scanToAdd')} onPress={() => openScanner('add')} />
 
         {prompt ? (
           <Card>
@@ -259,7 +370,9 @@ export default function PlaceDetailScreen() {
 
         {children && children.length > 0 ? (
           <View style={{ gap: 8 }}>
-            <Body style={{ fontWeight: '700' }}>{t('places.contains')}</Body>
+            <Body style={{ fontWeight: '700' }}>
+              {t('places.contains')} · {t('places.count', { count: children.length })}
+            </Body>
             {children.map((p: Place) => (
               <PlaceRow key={p.id} place={p} onPress={() => router.push(`/place/${p.id}` as never)} />
             ))}
@@ -267,7 +380,10 @@ export default function PlaceDetailScreen() {
         ) : null}
 
         <View style={{ gap: 8 }}>
-          <Body style={{ fontWeight: '700' }}>{t('places.contents')}</Body>
+          <Body style={{ fontWeight: '700' }}>
+            {t('places.contents')} · {t('items.count', { count: contents?.length ?? 0 })}
+            {contentTotals ? ` · ${contentTotals}` : ''}
+          </Body>
           {contents && contents.length > 0 ? (
             contents.map((it: Item) => (
               <ItemCard
@@ -280,6 +396,28 @@ export default function PlaceDetailScreen() {
           ) : (
             <Card><Muted>{t('common.empty')}</Muted></Card>
           )}
+        </View>
+
+        {/* Codes: a place may have none, one, or many. */}
+        <View style={{ gap: 8 }}>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <View style={{ flex: 1 }}>
+              <Button title={t('codes.addByScan')} variant="ghost" onPress={() => openScanner('code')} />
+            </View>
+            {!placeQrPayload ? (
+              <View style={{ flex: 1 }}>
+                <Button
+                  title={t('codes.generate')}
+                  variant="ghost"
+                  loading={generateCode.isPending}
+                  onPress={() => generateCode.mutate(place.id)}
+                />
+              </View>
+            ) : null}
+          </View>
+          {!placeQrPayload && (codes?.length ?? 0) === 0 ? (
+            <Muted style={{ fontSize: 12 }}>{t('codes.noneHint')}</Muted>
+          ) : null}
         </View>
 
         {placeQrPayload ? (
@@ -320,16 +458,22 @@ export default function PlaceDetailScreen() {
       </ScrollView>
 
       <ScanCameraModal
-        visible={scanOpen}
-        hint={t('places.scanToAdd')}
-        onClose={() => setScanOpen(false)}
-        onScan={onScanAdd}
+        visible={scanMode !== null}
+        hint={scanMode ? scanHints[scanMode] : undefined}
+        notice={scanNotice}
+        onDismissNotice={() => setScanNotice(null)}
+        busy={resolving || bind.isPending}
+        onClose={closeScanner}
+        onScan={(payload, rawType) => {
+          if (scanMode) scanHandlers[scanMode](payload, rawType);
+        }}
       />
-      <ScanCameraModal
-        visible={locScanOpen}
-        hint={t('places.scanSetLocation')}
-        onClose={() => setLocScanOpen(false)}
-        onScan={onScanLocation}
+
+      <PhotoViewer
+        visible={viewerOpen}
+        photos={place.photo_url ? [place.photo_url] : []}
+        closeLabel={t('common.back')}
+        onClose={() => setViewerOpen(false)}
       />
     </Screen>
   );
@@ -353,7 +497,7 @@ function PlaceRow({ place, onPress }: { place: Place; onPress: () => void }) {
         </View>
         <View style={{ flex: 1 }}>
           <Body style={{ fontWeight: '600' }}>{place.name}</Body>
-          {place.description ? <Muted>{place.description}</Muted> : null}
+          {place.description ? <Muted numberOfLines={2}>{place.description}</Muted> : null}
         </View>
       </Card>
     </TouchableOpacity>

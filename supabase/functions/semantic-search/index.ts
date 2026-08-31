@@ -58,20 +58,40 @@ Deno.serve(async (req: Request) => {
   const baseURL = (Deno.env.get('OPENAI_BASE_URL') ?? 'https://api.openai.com/v1').replace(/\/+$/, '');
   const embModel = Deno.env.get('OPENAI_EMBEDDING_MODEL') ?? 'text-embedding-3-small';
 
-  // 1. Embed the query.
-  const embResp = await fetch(`${baseURL}/embeddings`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model: embModel, input: query }),
-  });
-  if (!embResp.ok) {
-    const errText = await embResp.text();
-    console.error(`[semantic-search] OpenAI embeddings ${embResp.status}: ${errText}`);
-    return json({ error: `OpenAI embeddings ${embResp.status}`, detail: errText }, 502);
+  /** Token-scored relevance search in Postgres. The universal fallback. */
+  async function relevanceSearch() {
+    return db.rpc('fts_search', {
+      _household_id: householdId,
+      _query: query,
+      _limit: limit,
+    });
   }
-  const emb = await embResp.json();
-  const vector = emb.data?.[0]?.embedding;
-  if (!vector) return json({ error: 'embedding failed' }, 500);
+
+  // 1. Try to embed the query. A failure here is NOT fatal: not every
+  //    OpenAI-compatible endpoint serves an embeddings model, and returning
+  //    502 turned "no embeddings configured" into "search is broken". Fall
+  //    through to the relevance search instead.
+  let vector: number[] | null = null;
+  try {
+    const embResp = await fetch(`${baseURL}/embeddings`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: embModel, input: query }),
+    });
+    if (embResp.ok) {
+      vector = (await embResp.json()).data?.[0]?.embedding ?? null;
+    } else {
+      console.error(`[semantic-search] embeddings ${embResp.status}: ${await embResp.text()}`);
+    }
+  } catch (e) {
+    console.error(`[semantic-search] embeddings fetch threw: ${String(e)}`);
+  }
+
+  if (!vector) {
+    const { data: fallback, error: fbErr } = await relevanceSearch();
+    if (fbErr) return json({ error: 'search failed', detail: fbErr.message }, 500);
+    return json(fallback ?? []);
+  }
 
   // 2. pgvector cosine match within the household via RPC.
   const { data, error } = await db.rpc('semantic_match', {
@@ -80,13 +100,18 @@ Deno.serve(async (req: Request) => {
     _limit: limit,
   });
   if (error) {
-    // Fallback: if the helper RPC doesn't exist, return items with embeddings.
-    const { data: fallback, error: fbErr } = await db.select(
-      'items',
-      `select=id,name,description,category,current_place_id&household_id=eq.${encodeURIComponent(householdId)}&embedding=not.is.null&limit=${limit}`,
-    );
+    // The old fallback here listed items that HAVE an embedding, which is
+    // nothing at all while the embedding column is unpopulated — the query
+    // silently returned zero results.
+    const { data: fallback, error: fbErr } = await relevanceSearch();
     if (fbErr) return json({ error: 'search failed', detail: fbErr.message }, 500);
-    return json((fallback ?? []).map((r: { id: string; name: string; description: string | null; category: string | null; current_place_id: string | null }) => ({ item_id: r.id, name: r.name, description: r.description, category: r.category, current_place_id: r.current_place_id, score: 0 })));
+    return json(fallback ?? []);
+  }
+  // An embedding-less household matches nothing by cosine; fall through to the
+  // same relevance search rather than reporting "no results".
+  if (Array.isArray(data) && data.length === 0) {
+    const { data: fallback } = await relevanceSearch();
+    if (Array.isArray(fallback) && fallback.length > 0) return json(fallback);
   }
   return json(data ?? []);
 });

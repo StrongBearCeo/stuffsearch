@@ -1,18 +1,24 @@
-/** Item detail: photo, info, location, history, bound codes, move/edit/delete. */
+/** Item detail: photos, info, value, tags, location, links, codes, history. */
 import React, { useState } from 'react';
 import { View, ScrollView, Text, TouchableOpacity, Alert, Linking, Share } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import QRCode from 'react-native-qrcode-svg';
-import { H2, Body, Muted, Card, Screen, MaxWidth, Button, ErrorBanner } from '../../src/components/primitives';
+import { H2, Body, Muted, Card, Screen, MaxWidth, Button, Input, ErrorBanner } from '../../src/components/primitives';
 import { ExpoImage } from '../../src/components/ExpoImage';
+import { PhotoViewer } from '../../src/components/PhotoViewer';
 import { BoundCodesList } from '../../src/components/BoundCodesList';
+import { LinksCard } from '../../src/components/LinksCard';
+import { TagList } from '../../src/components/Tags';
 import { ScanCameraModal } from '../../src/components/ScanCameraModal';
 import { normalizeUrl } from '../../src/lib/url';
+import { itemLinks } from '../../src/lib/links';
+import { formatMoney, parseValueInput, DEFAULT_CURRENCY } from '../../src/lib/value';
+import { classifyScanForBinding } from '../../src/lib/bindCode';
 import { noteToTemplate } from '../../src/lib/historyNote';
 import { appQrPayload } from '../../src/lib/qrcode';
 import { printAndShareCode } from '../../src/lib/print';
 import { CreatePlaceSheet } from '../../src/components/CreatePlaceSheet';
-import { useItem, useItemHistory, useDeleteItem, useMoveItem } from '../../src/hooks/useItems';
+import { useItem, useItemHistory, useDeleteItem, useMoveItem, useUpdateItem, useGenerateItemCode } from '../../src/hooks/useItems';
 import { useConvertItemToPlace } from '../../src/hooks/useConvertItemToPlace';
 import { useCreatePlace } from '../../src/hooks/usePlaces';
 import { useScan } from '../../src/hooks/useScan';
@@ -27,6 +33,9 @@ import { useTranslation } from 'react-i18next';
 import { useHeaderTitle } from '../../src/lib/useHeaderTitle';
 import { hapticSuccess, hapticWarning } from '../../src/lib/haptics';
 
+/** Which job the shared camera modal is doing. */
+type ScanMode = 'location' | 'code' | null;
+
 export default function ItemDetailScreen() {
   const { t } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -34,21 +43,30 @@ export default function ItemDetailScreen() {
   const { activeHouseholdId } = useHousehold();
   const { user } = useAuth();
   const { data: item, isLoading, error } = useItem(id);
-  const { data: history } = useItemHistory(id);
-  const { data: codes } = useExternalCodes(activeHouseholdId, 'item', id);
+  // `id` may be an app qr_token (a scanned deep-link routes to /item/<token>),
+  // so every dependent query keys off the RESOLVED row id, not the route param.
+  const itemId = item?.id;
+  const { data: history } = useItemHistory(itemId);
+  const { data: codes } = useExternalCodes(activeHouseholdId, 'item', itemId);
   const { data: places } = usePlaces();
   const deleteItem = useDeleteItem();
+  const updateItem = useUpdateItem();
   const moveItem = useMoveItem();
+  const generateCode = useGenerateItemCode();
   const convertToPlace = useConvertItemToPlace();
   const createPlace = useCreatePlace();
   const bind = useBindExternalCode();
-  const unbind = useUnbindExternalCode('item', id);
-  const { resolve } = useScan();
+  const unbind = useUnbindExternalCode('item', itemId ?? id);
+  const { resolve, resolving } = useScan();
 
   const [movePicker, setMovePicker] = useState(false);
-  const [scanOpen, setScanOpen] = useState(false);
+  const [scanMode, setScanMode] = useState<ScanMode>(null);
+  /** Shown INSIDE the camera so the user sees it without closing the scanner. */
+  const [scanNotice, setScanNotice] = useState<string | null>(null);
   const [prompt, setPrompt] = useState<string | null>(null);
   const [pendingPlace, setPendingPlace] = useState<{ value: string; type: ExternalCodeType } | null>(null);
+  const [viewerIndex, setViewerIndex] = useState<number | null>(null);
+  const [valueDraft, setValueDraft] = useState<string | null>(null);
 
   if (isLoading) {
     return <Screen><View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}><Muted>{t('common.loading')}</Muted></View></Screen>;
@@ -57,14 +75,16 @@ export default function ItemDetailScreen() {
   if (!item) return <Screen><View style={{ padding: 16 }}><Muted>{t('errors.notFound')}</Muted></View></Screen>;
 
   const place = places?.find((p: Place) => p.id === item.current_place_id);
-  // The item's own app-QR deep-link (for display + share). Computed once.
+  // The item's own app-QR deep-link (for display + share). Optional: items are
+  // created without a code now and only get one on request.
   const token = item.qr_token;
   const qrPayload = token ? appQrPayload('item', token, activeHouseholdId ?? undefined) : null;
+  const links = itemLinks(item);
+  const photos = item.photo_urls ?? [];
 
-  /** Open the product link in the system browser. Falls back to an alert if
-   *  no app can handle the URL. */
-  function onOpenProductLink() {
-    const url = normalizeUrl(item!.product_link);
+  /** Open a product link in the system browser. */
+  function onOpenLink(raw: string) {
+    const url = normalizeUrl(raw);
     if (!url) return;
     Linking.openURL(url).catch(() => {
       Alert.alert(t('items.productLink'), t('errors.generic'));
@@ -126,24 +146,48 @@ export default function ItemDetailScreen() {
     setMovePicker(false);
   }
 
+  /** Save a hand-entered value. Marks the value as the user's so a later
+   *  enrichment won't silently overwrite it. */
+  async function onSaveValue() {
+    const parsed = parseValueInput(valueDraft ?? '');
+    await updateItem.mutateAsync({
+      id: item!.id,
+      patch: {
+        estimated_value: parsed,
+        value_currency: parsed == null ? null : item!.value_currency ?? DEFAULT_CURRENCY,
+        value_source: parsed == null ? null : 'manual',
+        value_updated_at: parsed == null ? null : new Date().toISOString(),
+      },
+    });
+    hapticSuccess();
+    setValueDraft(null);
+  }
+
+  function openScanner(mode: Exclude<ScanMode, null>) {
+    setScanNotice(null);
+    setScanMode(mode);
+  }
+
   /** Resolve a scanned code from the item screen. Only a place in the active
-   * household is meaningful here — we set this item's location to it. */
+   * household is meaningful here — we set this item's location to it.
+   * Recoverable problems set `scanNotice`, which shows over the live camera
+   * AND re-arms the scanner so the next scan is accepted. */
   async function onScanLocation(payload: string, rawType?: string) {
     const o = await resolve(payload);
     if (!o) {
-      setScanOpen(false);
+      setScanNotice(t('errors.generic'));
       return;
     }
     if (o.type === 'matched') {
       const m = o.matches[0];
       if (m.entity_type !== 'place') {
         hapticWarning();
-        setPrompt(t('items.scanNotAPlace'));
+        setScanNotice(t('items.scanNotAPlace'));
         return; // keep camera open so the user can retry
       }
       if (!o.inActiveHousehold) {
         hapticWarning();
-        setPrompt(t('scanResolve.switchPrompt', { name: '', household: '' }));
+        setScanNotice(t('scanResolve.otherHousehold'));
         return;
       }
       moveItem.mutate(
@@ -155,11 +199,54 @@ export default function ItemDetailScreen() {
           },
         },
       );
-      setScanOpen(false);
+      setScanMode(null);
     } else if (o.type === 'no-match') {
       // Unknown code → offer to create a place for it inline.
       setPendingPlace({ value: o.codeValue, type: scannerTypeToCodeType(rawType ?? 'other') });
-      setScanOpen(false);
+      setScanMode(null);
+    } else {
+      setScanNotice(t('items.scanNotAPlace'));
+    }
+  }
+
+  /** Scan a code to ADD it to this item. An item may carry many codes. */
+  async function onScanAddCode(payload: string, rawType?: string) {
+    if (!activeHouseholdId || !user) return;
+    const o = await resolve(payload);
+    if (!o) {
+      setScanNotice(t('errors.generic'));
+      return;
+    }
+    const c = classifyScanForBinding(o, { entityType: 'item', entityId: item!.id });
+    if (c.kind === 'already-here') {
+      hapticWarning();
+      setScanNotice(t('codes.alreadyBound'));
+      return;
+    }
+    if (c.kind === 'bound-elsewhere') {
+      hapticWarning();
+      setScanNotice(t('codes.boundElsewhere'));
+      return;
+    }
+    if (c.kind === 'app-code') {
+      hapticWarning();
+      setScanNotice(t('codes.appCode'));
+      return;
+    }
+    try {
+      await bind.mutateAsync({
+        householdId: activeHouseholdId,
+        codeValue: c.codeValue,
+        codeType: scannerTypeToCodeType(rawType ?? 'other'),
+        entityType: 'item',
+        entityId: item!.id,
+        boundBy: user.id,
+      });
+      hapticSuccess();
+      setScanMode(null);
+      setPrompt(t('codes.added'));
+    } catch (e) {
+      setScanNotice(e instanceof Error ? e.message : t('errors.generic'));
     }
   }
 
@@ -197,21 +284,26 @@ export default function ItemDetailScreen() {
     <Screen>
       <ScrollView contentContainerStyle={{ alignItems: 'center' }}>
         <MaxWidth style={{ padding: spacing.lg, gap: 12, paddingBottom: 40 }}>
-        {item.photo_urls && item.photo_urls.length > 0 ? (
+        {photos.length > 0 ? (
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={{ gap: 8, paddingBottom: 4 }}
           >
-            {item.photo_urls.map((uri, i) => (
-              <ExpoImage
+            {photos.map((uri, i) => (
+              <TouchableOpacity
                 key={`${uri}-${i}`}
-                uri={uri}
-                style={{ width: 220, height: 220, borderRadius: radius.mdLg }}
-              />
+                onPress={() => setViewerIndex(i)}
+                accessibilityRole="imagebutton"
+                accessibilityLabel={t('photos.viewFull')}
+              >
+                <ExpoImage uri={uri} style={{ width: 220, height: 220, borderRadius: radius.mdLg }} />
+              </TouchableOpacity>
             ))}
           </ScrollView>
         ) : null}
+        {photos.length > 0 ? <Muted style={{ fontSize: 11 }}>{t('photos.zoomHint')}</Muted> : null}
+
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
           <View style={{ flex: 1 }}>
             <H2>{item.name}</H2>
@@ -219,16 +311,67 @@ export default function ItemDetailScreen() {
           </View>
           <Button title={t('common.edit')} variant="ghost" onPress={() => router.push({ pathname: '/item/new', params: { id: item.id } } as never)} />
         </View>
+        {/* Full description — wraps over as many lines as it needs. */}
         {item.description ? <Body>{item.description}</Body> : null}
+        <TagList tags={item.tags} />
+
+        {/* Value card: an AI estimate the user can correct. */}
+        <Card style={{ gap: 8 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <View style={{ flex: 1 }}>
+              <Muted style={{ fontSize: 11, textTransform: 'uppercase' }}>{t('items.value')}</Muted>
+              {item.estimated_value != null ? (
+                <Body style={{ fontWeight: '700', fontSize: 17 }}>
+                  {formatMoney(item.estimated_value, item.value_currency)}
+                </Body>
+              ) : (
+                <Body style={{ fontStyle: 'italic', color: colors.textMuted }}>{t('items.noValue')}</Body>
+              )}
+              {item.estimated_value != null ? (
+                <Muted style={{ fontSize: 11 }}>
+                  {item.value_source === 'ai' ? t('items.valueFromAi') : t('items.valueFromYou')}
+                </Muted>
+              ) : null}
+            </View>
+            <Button
+              title={valueDraft == null ? t('items.setValue') : t('common.cancel')}
+              variant="ghost"
+              onPress={() =>
+                setValueDraft(valueDraft == null ? (item.estimated_value?.toString() ?? '') : null)
+              }
+            />
+          </View>
+          {valueDraft != null ? (
+            <View style={{ gap: 8 }}>
+              <Input
+                value={valueDraft}
+                onChangeText={setValueDraft}
+                keyboardType="decimal-pad"
+                placeholder={t('items.valuePlaceholder')}
+                accessibilityLabel={t('items.value')}
+              />
+              <Button title={t('common.save')} onPress={onSaveValue} loading={updateItem.isPending} />
+            </View>
+          ) : null}
+        </Card>
 
         <Card>
-          {/* Location header: label + the current place name (or empty state). */}
+          {/* Location header: label + the current place name (or empty state).
+              Tapping the place name opens that place. */}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <Text style={{ fontSize: 18 }}>📍</Text>
             <View style={{ flex: 1 }}>
               <Muted style={{ fontSize: 11, textTransform: 'uppercase' }}>{t('items.location')}</Muted>
               {place ? (
-                <Body style={{ fontWeight: '700', fontSize: 17 }}>{place.name}</Body>
+                <TouchableOpacity
+                  onPress={() => router.push(`/place/${place.id}` as never)}
+                  accessibilityRole="link"
+                  accessibilityLabel={`${t('items.openPlace')}: ${place.name}`}
+                >
+                  <Body style={{ fontWeight: '700', fontSize: 17, color: colors.primary }}>
+                    {place.name} ›
+                  </Body>
+                </TouchableOpacity>
               ) : (
                 <Body style={{ fontStyle: 'italic', color: colors.textMuted }}>{t('items.notLocated')}</Body>
               )}
@@ -242,7 +385,7 @@ export default function ItemDetailScreen() {
               variant="ghost"
               onPress={() => setMovePicker(!movePicker)}
             />
-            <Button title={t('items.scanSetLocation')} variant="ghost" onPress={() => setScanOpen(true)} />
+            <Button title={t('items.scanSetLocation')} variant="ghost" onPress={() => openScanner('location')} />
           </View>
 
           {/* Inline place picker */}
@@ -266,16 +409,29 @@ export default function ItemDetailScreen() {
           </Card>
         ) : null}
 
-        {item.product_link ? (
-          <TouchableOpacity onPress={onOpenProductLink} activeOpacity={0.6} accessibilityRole="link" accessibilityLabel={t('items.productLink')}>
-            <Card>
-              <Body style={{ fontWeight: '600' }}>{t('items.productLink')}</Body>
-              <Text style={{ color: colors.primary, fontSize: 13 }} numberOfLines={1}>
-                {item.product_link}
-              </Text>
-            </Card>
-          </TouchableOpacity>
-        ) : null}
+        <LinksCard links={links} onOpen={onOpenLink} />
+
+        {/* Codes: an item may have none, one, or many. */}
+        <View style={{ gap: 8 }}>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <View style={{ flex: 1 }}>
+              <Button title={t('codes.addByScan')} variant="ghost" onPress={() => openScanner('code')} />
+            </View>
+            {!qrPayload ? (
+              <View style={{ flex: 1 }}>
+                <Button
+                  title={t('codes.generate')}
+                  variant="ghost"
+                  loading={generateCode.isPending}
+                  onPress={() => generateCode.mutate(item.id)}
+                />
+              </View>
+            ) : null}
+          </View>
+          {!qrPayload && (codes?.length ?? 0) === 0 ? (
+            <Muted style={{ fontSize: 12 }}>{t('codes.noneHint')}</Muted>
+          ) : null}
+        </View>
 
         {qrPayload ? (
           <Card style={{ alignItems: 'center', gap: 8 }}>
@@ -341,10 +497,24 @@ export default function ItemDetailScreen() {
       </ScrollView>
 
       <ScanCameraModal
-        visible={scanOpen}
-        hint={t('items.scanSetLocation')}
-        onClose={() => setScanOpen(false)}
-        onScan={onScanLocation}
+        visible={scanMode !== null}
+        hint={scanMode === 'code' ? t('codes.addByScan') : t('items.scanSetLocation')}
+        notice={scanNotice}
+        onDismissNotice={() => setScanNotice(null)}
+        busy={resolving || bind.isPending}
+        onClose={() => {
+          setScanMode(null);
+          setScanNotice(null);
+        }}
+        onScan={scanMode === 'code' ? onScanAddCode : onScanLocation}
+      />
+
+      <PhotoViewer
+        visible={viewerIndex !== null}
+        photos={photos}
+        initialIndex={viewerIndex ?? 0}
+        closeLabel={t('common.back')}
+        onClose={() => setViewerIndex(null)}
       />
 
       <CreatePlaceSheet

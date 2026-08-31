@@ -36,9 +36,32 @@ export function PlaceCard({
           uri={place.photo_url}
           style={{ width: 48, height: 48, borderRadius: 8, backgroundColor: colors.surfaceAlt }}
         />
-        <View style={{ flex: 1 }}>
+        <View style={{ flex: 1, gap: 2 }}>
           <Body style={{ fontWeight: '600' }}>{place.name}</Body>
-          {place.description ? <Muted numberOfLines={1}>{place.description}</Muted> : null}
+          {/* Two lines, not one: a one-line clamp cut most descriptions mid-word. */}
+          {place.description ? <Muted numberOfLines={2}>{place.description}</Muted> : null}
+          {place.tags && place.tags.length > 0 ? (
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 2 }}>
+              {place.tags.slice(0, 3).map((tag) => (
+                <View
+                  key={tag}
+                  style={{
+                    paddingHorizontal: 6,
+                    paddingVertical: 1,
+                    borderRadius: 999,
+                    backgroundColor: tint(colors.primary, '22'),
+                  }}
+                >
+                  <Text style={{ color: colors.primary, fontSize: 10 }} numberOfLines={1}>
+                    {tag}
+                  </Text>
+                </View>
+              ))}
+              {place.tags.length > 3 ? (
+                <Text style={{ color: colors.textMuted, fontSize: 10 }}>+{place.tags.length - 3}</Text>
+              ) : null}
+            </View>
+          ) : null}
         </View>
         <View style={{ alignItems: 'flex-end', flexShrink: 1, gap: 2 }}>
           {located ? (

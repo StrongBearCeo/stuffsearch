@@ -17,8 +17,11 @@ import {
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useWindowDimensions } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, radius, tint } from '../theme';
 import { CONTENT_MAX_WIDTH } from '../hooks/useResponsive';
+import { useKeyboardHeight } from '../hooks/useKeyboardHeight';
+import { keyboardSpacerHeight } from '../lib/keyboard';
 
 export function Screen({ style, children }: { style?: ViewProps['style']; children: React.ReactNode }) {
   return <View style={[{ flex: 1, backgroundColor: colors.bg }, style]}>{children}</View>;
@@ -39,6 +42,16 @@ export function MaxWidth({ children, style }: { children: React.ReactNode; style
  * keyboard opens. Use this in place of `<Screen><ScrollView>` on form screens.
  * Pass the same `contentContainerStyle` you'd give a ScrollView.
  *
+ * Keyboard handling has three parts, because KeyboardAvoidingView alone was
+ * not enough — the description / product-link / tag fields near the bottom of
+ * the item and place forms stayed hidden under the keyboard on Android:
+ *   1. `behavior="padding"` on iOS (the classic case).
+ *   2. `automaticallyAdjustKeyboardInsets` so iOS scrolls the focused field up.
+ *   3. A spacer equal to the keyboard's height appended to the content on
+ *      every platform. Without extra scrollable room below the last field, no
+ *      amount of avoiding can bring it above the keyboard; with it, both the
+ *      platform auto-scroll and a manual swipe can reach every field.
+ *
  * Content is capped to CONTENT_MAX_WIDTH and centered, so in landscape inputs
  * and buttons don't stretch across the full width. */
 export function FormScreen({
@@ -56,20 +69,24 @@ export function FormScreen({
   // width, so maxWidth is never hit. A measured literal width works.
   const { width } = useWindowDimensions();
   const contentWidth = Math.min(width, CONTENT_MAX_WIDTH);
+  const insets = useSafeAreaInsets();
+  const keyboardHeight = useKeyboardHeight();
+  const spacer = keyboardSpacerHeight(keyboardHeight, insets.bottom);
   return (
     <Screen style={style}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={{ flex: 1 }}
-        // On Android, the window resize mode handles most cases; this keeps
-        // the content scrollable when the keyboard would otherwise cover it.
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
       >
         <ScrollView
           contentContainerStyle={[{ alignItems: 'center' }, contentContainerStyle]}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
+          automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
         >
           <View style={{ width: contentWidth }}>{children}</View>
+          {/* Scrollable room under the last field while the keyboard is up. */}
+          <View style={{ height: spacer }} />
         </ScrollView>
       </KeyboardAvoidingView>
     </Screen>

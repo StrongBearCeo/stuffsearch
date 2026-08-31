@@ -35,20 +35,39 @@ async function invokeFunction<T>(name: string, body: unknown): Promise<T> {
   return data as T;
 }
 
-/** enrich-item: barcode + photo → suggested name/category/description/product_link. */
+/**
+ * enrich-item: photos + barcode + text → suggested name / category /
+ * description / product links / tags / value.
+ *
+ * The function is vision-capable: whatever is in `photoUrls` is sent to the
+ * model as image content, so an item with photos and no text still gets
+ * filled in. `existingLinks` are passed as INPUT — the model is told to keep
+ * them and only add genuinely new ones, and every returned link is HTTP-checked
+ * server-side so dead 404 URLs never reach the app.
+ */
 export interface EnrichItemRequest {
   householdId: string;
   name?: string;
   description?: string;
+  category?: string;
   photoUrls?: string[];
+  existingLinks?: string[];
   barcode?: string;
   barcodeType?: string;
+  language?: 'en' | 'vi';
 }
 export interface EnrichItemResponse {
   name?: string;
   category?: string;
   description?: string;
+  /** Legacy single-link field; still read by applyEnrichment. */
   product_link?: string;
+  product_links?: string[];
+  tags?: string[];
+  estimated_value?: number;
+  value_currency?: string;
+  /** Links the model proposed that failed their HTTP check (surfaced as a hint). */
+  rejected_links?: string[];
 }
 export async function enrichItem(req: EnrichItemRequest): Promise<EnrichItemResponse> {
   return (await invokeFunction<EnrichItemResponse>('enrich-item', req)) ?? {};

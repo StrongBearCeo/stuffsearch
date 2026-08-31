@@ -9,7 +9,9 @@ import { useHeaderTitle } from '../src/lib/useHeaderTitle';
 
 const SECTIONS = [
   { emoji: '📷', titleKey: 'help.scanTitle', bodyKey: 'help.scanBody' },
+  { emoji: '🏷️', titleKey: 'help.codesTitle', bodyKey: 'help.codesBody' },
   { emoji: '🗄️', titleKey: 'help.organizeTitle', bodyKey: 'help.organizeBody' },
+  { emoji: '🔖', titleKey: 'help.tagsTitle', bodyKey: 'help.tagsBody' },
   { emoji: '❓', titleKey: 'help.askTitle', bodyKey: 'help.askBody' },
   { emoji: '🖨️', titleKey: 'help.printTitle', bodyKey: 'help.printBody' },
 ] as const;

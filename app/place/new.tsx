@@ -1,18 +1,20 @@
 /** Create or edit a place. Supports a prefilled external code (from scan). */
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Text, View, Alert } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { FormScreen, H1, Input, Muted, Card, Button, ErrorBanner } from '../../src/components/primitives';
 import { BarcodeImage } from '../../src/components/BarcodeImage';
 import { PhotoInput } from '../../src/components/PhotoInput';
+import { TagInput } from '../../src/components/Tags';
 import { ScanCameraModal } from '../../src/components/ScanCameraModal';
-import { useCreatePlace, useUpdatePlace, usePlace } from '../../src/hooks/usePlaces';
+import { useCreatePlace, useUpdatePlace, usePlace, usePlaces } from '../../src/hooks/usePlaces';
 import { usePhotoPicker, type PhotoSource } from '../../src/hooks/usePhotoPicker';
 import { useBindExternalCode } from '../../src/hooks/useExternalCode';
 import { useHousehold } from '../../src/lib/household';
 import { useAuth } from '../../src/lib/auth';
 import { errorMessage } from '../../src/lib/errors';
 import { scannerTypeToCodeType } from '../../src/lib/constants';
+import { collectTags } from '../../src/lib/tags';
 import { spacing } from '../../src/theme';
 import { useTranslation } from 'react-i18next';
 import { useHeaderTitle } from '../../src/lib/useHeaderTitle';
@@ -31,16 +33,24 @@ export default function NewPlaceScreen() {
   const createPlace = useCreatePlace();
   const updatePlace = useUpdatePlace();
   const bind = useBindExternalCode();
+  const { data: allPlaces } = usePlaces();
   const { pickAndUpload, uploading: photoUploading, error: photoError, clearError } = usePhotoPicker('places', false);
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [tags, setTags] = useState<string[]>([]);
   const [photo, setPhoto] = useState<string | null>(null);
   // A code scanned from within this form (overrides any params.code from the
   // scan tab). Bound to the new place on save.
   const [scannedCode, setScannedCode] = useState<{ value: string; type: ExternalCodeType } | null>(null);
   const [scanOpen, setScanOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Tags already used on other places, offered as one-tap suggestions.
+  const tagSuggestions = useMemo(
+    () => collectTags(allPlaces ?? []).map((tc) => tc.tag),
+    [allPlaces],
+  );
 
   // The effective code to bind: prefer an in-form scan, fall back to params.
   const codeValue = scannedCode?.value ?? params.code;
@@ -56,6 +66,7 @@ export default function NewPlaceScreen() {
     if (editing && existing) {
       setName(existing.name);
       setDescription(existing.description ?? '');
+      setTags(existing.tags ?? []);
       setPhoto(existing.photo_url ?? null);
     } else {
       setName(params.name ?? '');
@@ -88,6 +99,7 @@ export default function NewPlaceScreen() {
       const payload = {
         name: name.trim(),
         description: description.trim() || null,
+        tags,
         photo_url: photo,
       };
       let placeId: string;
@@ -131,7 +143,10 @@ export default function NewPlaceScreen() {
           ) : null}
         </Card>
       ) : !editing ? (
-        <Button title={t('items.scanCode')} variant="ghost" onPress={() => setScanOpen(true)} />
+        <>
+          <Button title={t('items.scanCode')} variant="ghost" onPress={() => setScanOpen(true)} />
+          <Muted style={{ fontSize: 12 }}>{t('codes.optionalHint')}</Muted>
+        </>
       ) : null}
       <View style={{ gap: 8 }}>
         <PhotoInput
@@ -152,7 +167,11 @@ export default function NewPlaceScreen() {
             value={description}
             onChangeText={setDescription}
             multiline
+            style={{ minHeight: 110 }}
           />
+        </Field>
+        <Field label={t('places.tags')}>
+          <TagInput tags={tags} onChange={setTags} suggestions={tagSuggestions} />
         </Field>
       </View>
       {error ? <ErrorBanner message={error} /> : null}

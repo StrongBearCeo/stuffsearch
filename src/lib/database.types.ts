@@ -167,6 +167,7 @@ export type Database = {
           current_place_since: string | null
           description: string | null
           embedding: string | null
+          estimated_value: number | null
           household_id: string
           id: string
           last_moved_by: string | null
@@ -174,8 +175,13 @@ export type Database = {
           name: string
           photo_urls: string[]
           product_link: string | null
+          product_links: string[]
           qr_token: string | null
+          tags: string[]
           updated_at: string
+          value_currency: string | null
+          value_source: string | null
+          value_updated_at: string | null
         }
         Insert: {
           category?: string | null
@@ -185,6 +191,7 @@ export type Database = {
           current_place_since?: string | null
           description?: string | null
           embedding?: string | null
+          estimated_value?: number | null
           household_id: string
           id?: string
           last_moved_by?: string | null
@@ -192,8 +199,13 @@ export type Database = {
           name: string
           photo_urls?: string[]
           product_link?: string | null
+          product_links?: string[]
           qr_token?: string | null
+          tags?: string[]
           updated_at?: string
+          value_currency?: string | null
+          value_source?: string | null
+          value_updated_at?: string | null
         }
         Update: {
           category?: string | null
@@ -203,6 +215,7 @@ export type Database = {
           current_place_since?: string | null
           description?: string | null
           embedding?: string | null
+          estimated_value?: number | null
           household_id?: string
           id?: string
           last_moved_by?: string | null
@@ -210,8 +223,13 @@ export type Database = {
           name?: string
           photo_urls?: string[]
           product_link?: string | null
+          product_links?: string[]
           qr_token?: string | null
+          tags?: string[]
           updated_at?: string
+          value_currency?: string | null
+          value_source?: string | null
+          value_updated_at?: string | null
         }
         Relationships: [
           {
@@ -241,6 +259,7 @@ export type Database = {
           parent_place_id: string | null
           photo_url: string | null
           qr_token: string | null
+          tags: string[]
         }
         Insert: {
           created_at?: string
@@ -252,6 +271,7 @@ export type Database = {
           parent_place_id?: string | null
           photo_url?: string | null
           qr_token?: string | null
+          tags?: string[]
         }
         Update: {
           created_at?: string
@@ -263,6 +283,7 @@ export type Database = {
           parent_place_id?: string | null
           photo_url?: string | null
           qr_token?: string | null
+          tags?: string[]
         }
         Relationships: [
           {

@@ -28,7 +28,9 @@
     "chooseSource": "Thêm ảnh từ…",
     "uploading": "Đang tải lên…",
     "cameraDenied": "Đã từ chối truy cập máy ảnh. Bật trong Cài đặt để chụp ảnh.",
-    "libraryDenied": "Đã từ chối truy cập thư viện ảnh. Bật trong Cài đặt để chọn ảnh."
+    "libraryDenied": "Đã từ chối truy cập thư viện ảnh. Bật trong Cài đặt để chọn ảnh.",
+    "viewFull": "Xem ảnh đầy đủ",
+    "zoomHint": "Chạm vào ảnh để mở · chụm hoặc chạm hai lần để phóng to"
   },
   "auth": {
     "welcome": "Chào mừng đến StuffSearch",
@@ -109,8 +111,24 @@
     "createAndAssign": "Tạo nơi chứa & đặt vị trí",
     "convertToPlace": "Chuyển thành nơi chứa",
     "convertTitle": "Chuyển thành nơi chứa?",
-    "convertMessage": "Đồ vật này sẽ thành một nơi chứa ở cùng vị trí. Tên, mô tả, ảnh và mã được giữ lại. Danh mục, liên kết sản phẩm và các ảnh thừa sẽ bị bỏ. Đồ vật gốc sẽ bị xoá.",
-    "convertSuccess": "Đã chuyển thành nơi chứa"
+    "convertMessage": "Món đồ này sẽ trở thành một nơi chứa ở cùng vị trí. Tên, mô tả, thẻ, ảnh đầu tiên và các mã sẽ được giữ lại. Danh mục, giá trị, liên kết sản phẩm và các ảnh còn lại sẽ bị bỏ. Món đồ sẽ bị xoá.",
+    "convertSuccess": "Đã chuyển thành nơi chứa",
+    "count": "{{count}} món đồ",
+    "count_plural": "{{count}} món đồ",
+    "totalValue": "Tổng",
+    "notValued": "{{count}} chưa định giá",
+    "value": "Giá trị",
+    "noValue": "Chưa có giá trị",
+    "setValue": "Đặt giá trị",
+    "valuePlaceholder": "ví dụ 120",
+    "valueFromAi": "AI ước tính — chạm để sửa",
+    "valueFromYou": "Giá trị bạn nhập",
+    "tags": "Thẻ",
+    "productLinks": "Liên kết sản phẩm",
+    "openPlace": "Mở nơi chứa",
+    "enrichFromPhoto": "✨ Nhận diện từ ảnh",
+    "enrichDroppedLinks": "{{count}} liên kết gợi ý không mở được nên đã bị bỏ",
+    "enrichDroppedLinks_plural": "{{count}} liên kết gợi ý không mở được nên đã bị bỏ"
   },
   "history": {
     "movedFromTo": "Đã chuyển từ {{from}} sang {{to}}",
@@ -149,7 +167,10 @@
     "qrHint": "Quét mã này để mở nơi chứa",
     "shareQr": "Chia sẻ QR",
     "scanSelf": "Một nơi không thể nằm trong chính nó",
-    "scanCycle": "Không thể chuyển — nơi này đã chứa nơi hiện tại"
+    "scanCycle": "Không thể chuyển — nơi này đã chứa nơi hiện tại",
+    "count": "{{count}} nơi chứa",
+    "count_plural": "{{count}} nơi chứa",
+    "tags": "Thẻ"
   },
   "scan": {
     "title": "Quét",
@@ -171,14 +192,14 @@
     "createItem": "Tạo đồ vật với mã này",
     "createPlace": "Tạo nơi chứa với mã này",
     "productLookup": "Tra cứu sản phẩm",
-    "lookingUp": "Đang tra cứu sản phẩm…"
+    "lookingUp": "Đang tra cứu sản phẩm…",
+    "otherHousehold": "Mã này thuộc về một hộ gia đình khác."
   },
   "search": {
     "title": "Tìm kiếm",
     "placeholder": "Tìm đồ của bạn…",
     "voice": "Tìm bằng giọng nói",
     "listening": "Đang nghe…",
-    "semantic": "Tìm kiếm ngữ nghĩa",
     "askPlaceholder": "Hỏi: “Đèn Giáng sinh ở đâu?”",
     "ask": "Hỏi",
     "askIntro": "Hỏi đồ vật ở đâu trong nhà. Thử:",
@@ -189,7 +210,8 @@
     "askClear": "Xoá",
     "askError": "Không nhận được câu trả lời. Thử lại sau chút.",
     "results": "Kết quả",
-    "noResults": "Không có kết quả"
+    "noResults": "Không có kết quả",
+    "related": "Kết quả liên quan"
   },
   "codes": {
     "title": "Mã đã gán",
@@ -198,7 +220,15 @@
     "type": "Loại",
     "label": "Nhãn",
     "unbind": "Bỏ gán",
-    "unbindConfirm": "Bỏ gán mã này khỏi đồ vật?"
+    "unbindConfirm": "Bỏ gán mã này khỏi đồ vật?",
+    "addByScan": "Quét để thêm mã",
+    "generate": "Tạo mã ứng dụng",
+    "alreadyBound": "Mã này đã gắn với món này rồi.",
+    "boundElsewhere": "Mã này đã thuộc về thứ khác.",
+    "appCode": "Đây là mã StuffSearch — nó đã tự mở món đồ hoặc nơi chứa của nó.",
+    "added": "Đã thêm mã",
+    "noneHint": "Chưa có mã. Hãy tạo một mã, hoặc quét nhãn đã in để gắn vào.",
+    "optionalHint": "Không bắt buộc — bạn có thể thêm hoặc tạo mã sau."
   },
   "settings": {
     "title": "Cài đặt",
@@ -223,7 +253,7 @@
     "itemsSection": "Đồ vật",
     "placesSection": "Nơi chứa",
     "print": "In / Chia sẻ",
-    "nothing": "Chưa có mã để in. Đồ vật và nơi chứa sẽ có mã khi bạn tạo.",
+    "nothing": "Chưa có mã nào để in. Mở một món đồ hoặc nơi chứa và chạm “Tạo mã ứng dụng” để tạo mã.",
     "selectAll": "Chọn tất cả",
     "selectNone": "Bỏ chọn",
     "selected": "Đã chọn {{count}}",
@@ -247,12 +277,29 @@
   "help": {
     "title": "Trợ giúp",
     "scanTitle": "Quét mã",
-    "scanBody": "Mở tab Quét và hướng vào mã vạch hoặc QR. Mã đã có sẽ mở đồ vật hoặc nơi chứa. Mã mới cho phép tạo đồ vật hoặc nơi chứa. Trong đồ vật, nhấn “Quét để đặt vị trí” và quét mã nơi chứa để chuyển đến đó. Trong nơi chứa, nhấn “Quét để thêm” để chuyển đồ vật vào hoặc lồng nơi khác.",
+    "scanBody": "Mở tab Quét và hướng vào mã vạch hoặc mã QR. Mã khớp sẽ mở món đồ hoặc nơi chứa. Mã lạ cho phép bạn tạo món đồ hoặc nơi chứa mới. Trong một món đồ, chạm “Quét để đặt vị trí” rồi quét mã của nơi chứa để chuyển nó vào đó. Trong một nơi chứa, chạm “Quét để thêm” để chuyển món đồ vào hoặc lồng một nơi chứa khác. Nếu không áp dụng được, lý do sẽ hiện ngay trên camera và bạn có thể quét lại luôn.",
     "organizeTitle": "Sắp xếp đồ vật & nơi chứa",
     "organizeBody": "Nơi chứa có thể lồng nhau — hộp trong kệ, kệ trong phòng. Trong đồ vật, dùng thẻ Vị trí để đổi nơi hoặc quét nơi mới. Trong nơi chứa, dùng thẻ Vị trí để chuyển vào nơi khác. Danh sách nơi chứa cho thấy mỗi nơi nằm ở đâu.",
     "askTitle": "Hỏi trợ lý",
     "askBody": "Trong màn Hỏi, gõ hoặc nói câu hỏi như “Đèn Giáng sinh ở đâu?” Trợ lý tìm đồ vật khớp và cho vị trí. Nhấn kết quả để mở đồ vật.",
     "printTitle": "In nhãn QR",
-    "printBody": "Vào Cài đặt → In mã. Chọn đồ vật và nơi chứa cần nhãn, rồi nhấn In / Chia sẻ để tạo PDF. Mỗi mã là QR có thể quét để mở đồ vật hoặc nơi chứa."
+    "printBody": "Vào Cài đặt → In mã. Chọn món đồ và nơi chứa bạn muốn in nhãn, rồi chạm In / Chia sẻ để tạo PDF. Chỉ những thứ đã có mã ứng dụng mới hiện ra — hãy tạo mã từ màn hình của nó trước. Bạn cũng có thể chạy `npm run labels` trên máy tính để in các tờ nhãn trắng dán lên đồ trước khi đưa vào ứng dụng.",
+    "codesTitle": "Mã là tuỳ chọn",
+    "codesBody": "Món đồ và nơi chứa mới không có mã nào. Khi cần, hãy mở nó và chạm “Tạo mã ứng dụng” để có mã QR StuffSearch in được, hoặc “Quét để thêm mã” để gắn mã vạch/nhãn sẵn có trên vật đó. Một thứ có thể mang nhiều mã, ở bất kỳ định dạng nào.",
+    "tagsTitle": "Thẻ & giá trị",
+    "tagsBody": "Thêm thẻ như “trả lại” hoặc “dễ vỡ” cho món đồ và nơi chứa, rồi chạm vào thẻ ở tab Món đồ hoặc Nơi chứa để lọc. Mỗi món đồ cũng có thể có giá trị — chạm ✨ Nhận diện từ ảnh để trợ lý ước tính từ hình, rồi bạn tự sửa lại con số. Tab Món đồ cộng tổng những gì đang hiển thị."
+  },
+  "tags": {
+    "add": "Thêm",
+    "remove": "Xoá thẻ",
+    "placeholder": "Thêm thẻ, ví dụ trả lại",
+    "suggestions": "Đã dùng trước đây",
+    "clear": "Xoá lọc"
+  },
+  "links": {
+    "add": "Thêm",
+    "remove": "Xoá",
+    "count": "{{count}} liên kết",
+    "count_plural": "{{count}} liên kết"
   }
 }

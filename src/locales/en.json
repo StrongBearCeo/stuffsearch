@@ -28,7 +28,9 @@
     "chooseSource": "Add a photo from…",
     "uploading": "Uploading…",
     "cameraDenied": "Camera access was denied. Enable it in Settings to take a photo.",
-    "libraryDenied": "Photo library access was denied. Enable it in Settings to pick a photo."
+    "libraryDenied": "Photo library access was denied. Enable it in Settings to pick a photo.",
+    "viewFull": "View full photo",
+    "zoomHint": "Tap a photo to open it · pinch or double-tap to zoom"
   },
   "auth": {
     "welcome": "Welcome to StuffSearch",
@@ -109,8 +111,24 @@
     "createAndAssign": "Create place & set location",
     "convertToPlace": "Convert to place",
     "convertTitle": "Convert to a place?",
-    "convertMessage": "This item becomes a place in the same location. Its name, description, photo, and codes are kept. Category, product link, and extra photos are discarded. The item itself is removed.",
-    "convertSuccess": "Converted to a place"
+    "convertMessage": "This item becomes a place in the same location. Its name, description, tags, first photo, and codes are kept. Category, value, product links, and extra photos are discarded. The item itself is removed.",
+    "convertSuccess": "Converted to a place",
+    "count": "{{count}} item",
+    "count_plural": "{{count}} items",
+    "totalValue": "Total",
+    "notValued": "{{count}} not valued",
+    "value": "Value",
+    "noValue": "No value yet",
+    "setValue": "Set value",
+    "valuePlaceholder": "e.g. 120",
+    "valueFromAi": "AI estimate — tap to correct",
+    "valueFromYou": "Your value",
+    "tags": "Tags",
+    "productLinks": "Product links",
+    "openPlace": "Open place",
+    "enrichFromPhoto": "✨ Identify from photo",
+    "enrichDroppedLinks": "{{count}} suggested link didn't load and was dropped",
+    "enrichDroppedLinks_plural": "{{count}} suggested links didn't load and were dropped"
   },
   "history": {
     "movedFromTo": "Moved from {{from}} to {{to}}",
@@ -149,7 +167,10 @@
     "qrHint": "Scan this to open the place",
     "shareQr": "Share QR",
     "scanSelf": "A place can't go inside itself",
-    "scanCycle": "Can't move it in — it already contains this place"
+    "scanCycle": "Can't move it in — it already contains this place",
+    "count": "{{count}} place",
+    "count_plural": "{{count}} places",
+    "tags": "Tags"
   },
   "scan": {
     "title": "Scan",
@@ -171,14 +192,14 @@
     "createItem": "Create item with this code",
     "createPlace": "Create place with this code",
     "productLookup": "Look up product",
-    "lookingUp": "Looking up product…"
+    "lookingUp": "Looking up product…",
+    "otherHousehold": "That code belongs to a different household."
   },
   "search": {
     "title": "Search",
     "placeholder": "Search your stuff…",
     "voice": "Voice search",
     "listening": "Listening…",
-    "semantic": "Semantic search",
     "askPlaceholder": "Ask: “Where are the Christmas lights?”",
     "ask": "Ask",
     "askIntro": "Ask where something is in your home. Try:",
@@ -189,7 +210,8 @@
     "askClear": "Clear",
     "askError": "Couldn't get an answer. Try again in a moment.",
     "results": "Results",
-    "noResults": "No results"
+    "noResults": "No results",
+    "related": "Related match"
   },
   "codes": {
     "title": "Bound codes",
@@ -198,7 +220,15 @@
     "type": "Type",
     "label": "Label",
     "unbind": "Unbind",
-    "unbindConfirm": "Unbind this code from the item?"
+    "unbindConfirm": "Unbind this code from the item?",
+    "addByScan": "Scan to add a code",
+    "generate": "Generate app code",
+    "alreadyBound": "That code is already on this one.",
+    "boundElsewhere": "That code already belongs to something else.",
+    "appCode": "That's a StuffSearch code — it already opens its own item or place.",
+    "added": "Code added",
+    "noneHint": "No code yet. Generate one, or scan a printed label to attach it.",
+    "optionalHint": "Optional — you can add or generate a code later."
   },
   "settings": {
     "title": "Settings",
@@ -223,7 +253,7 @@
     "itemsSection": "Items",
     "placesSection": "Places",
     "print": "Print / Share",
-    "nothing": "No codes to print yet. Items and places get a code when you create them.",
+    "nothing": "No codes to print yet. Open an item or place and tap “Generate app code” to give it one.",
     "selectAll": "Select all",
     "selectNone": "Clear",
     "selected": "{{count}} selected",
@@ -247,12 +277,29 @@
   "help": {
     "title": "Help",
     "scanTitle": "Scanning",
-    "scanBody": "Open the Scan tab and point at a barcode or QR code. A matched code opens the item or place. An unknown code lets you create a new item or place. From inside an item, tap “Scan to set location” and scan a place's code to move it there. From inside a place, tap “Scan to add” to move items in or nest another place.",
+    "scanBody": "Open the Scan tab and point at a barcode or QR code. A matched code opens the item or place. An unknown code lets you create a new item or place. From inside an item, tap “Scan to set location” and scan a place's code to move it there. From inside a place, tap “Scan to add” to move items in or nest another place. If a scan can't be applied, the reason appears over the camera and you can scan again straight away.",
     "organizeTitle": "Organizing items & places",
     "organizeBody": "Places can be nested — a box inside a shelf inside a room. On an item, use the Location card to change its place or scan a new one. On a place, use the Location card to move it into another place. The places list shows where each place lives.",
     "askTitle": "Asking the assistant",
     "askBody": "On the Ask screen, type or speak a question like “Where are the Christmas lights?” The assistant finds matching items and tells you their locations. Tap a result to open the item.",
     "printTitle": "Printing QR labels",
-    "printBody": "Go to Settings → Print codes. Select the items and places you want labels for, then tap Print / Share to generate a PDF. Each code is a scannable QR that opens its item or place."
+    "printBody": "Go to Settings → Print codes. Select the items and places you want labels for, then tap Print / Share to generate a PDF. Only things that already have an app code are listed — give one a code from its own screen first. You can also run `npm run labels` on a computer to print blank label sheets to stick on things before they exist in the app.",
+    "codesTitle": "Codes are optional",
+    "codesBody": "New items and places start with no code at all. When you want one, open it and either tap “Generate app code” for a printable StuffSearch QR, or “Scan to add a code” to attach a barcode or label that's already on the object. One thing can carry several codes, in any format.",
+    "tagsTitle": "Tags & value",
+    "tagsBody": "Add tags like “return” or “fragile” to items and places, then tap a tag on the Items or Places tab to filter by it. Each item can also carry a value — tap ✨ Identify from photo to have the assistant estimate one from the picture, then correct the number yourself. The Items tab totals everything on screen."
+  },
+  "tags": {
+    "add": "Add",
+    "remove": "Remove tag",
+    "placeholder": "Add a tag, e.g. return",
+    "suggestions": "Used before",
+    "clear": "Clear"
+  },
+  "links": {
+    "add": "Add",
+    "remove": "Remove",
+    "count": "{{count}} link",
+    "count_plural": "{{count}} links"
   }
 }

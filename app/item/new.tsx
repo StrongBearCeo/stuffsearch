@@ -1,19 +1,25 @@
 /** Create or edit an item. Supports a prefilled external code (from scan) and
  * optional LLM enrichment. When `id` param is present, edits that item. */
-import React, { useEffect, useState } from 'react';
-import { Text, View, Alert } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Text, View, Alert, Linking } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { FormScreen, H1, Input, Muted, Card, Button, ErrorBanner } from '../../src/components/primitives';
 import { BarcodeImage } from '../../src/components/BarcodeImage';
 import { PhotoInput } from '../../src/components/PhotoInput';
+import { LinksCard } from '../../src/components/LinksCard';
+import { TagInput } from '../../src/components/Tags';
 import { ScanCameraModal } from '../../src/components/ScanCameraModal';
-import { useCreateItem, useUpdateItem, useItem } from '../../src/hooks/useItems';
+import { useCreateItem, useUpdateItem, useItem, useItems } from '../../src/hooks/useItems';
 import { usePhotoPicker, type PhotoSource } from '../../src/hooks/usePhotoPicker';
 import { useBindExternalCode } from '../../src/hooks/useExternalCode';
 import { useHousehold } from '../../src/lib/household';
 import { useAuth } from '../../src/lib/auth';
 import { errorMessage } from '../../src/lib/errors';
 import { enrichItem } from '../../src/lib/llm';
+import { applyEnrichment } from '../../src/lib/enrich';
+import { itemLinks, linkColumns, mergeLinks, normalizeLink } from '../../src/lib/links';
+import { collectTags } from '../../src/lib/tags';
+import { parseValueInput, DEFAULT_CURRENCY } from '../../src/lib/value';
 import { scannerTypeToCodeType } from '../../src/lib/constants';
 import { spacing } from '../../src/theme';
 import { useTranslation } from 'react-i18next';
@@ -36,34 +42,47 @@ export default function NewItemScreen() {
   const { data: existing } = useItem(params.id);
 
   const { activeHouseholdId } = useHousehold();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const createItem = useCreateItem();
   const updateItem = useUpdateItem();
   const bind = useBindExternalCode();
+  const { data: allItems } = useItems();
   const { pickAndUpload, uploading: photoUploading, error: photoError, clearError } = usePhotoPicker('items', true);
-
-  /** Capture a code scanned from within the form. We store the raw value (no
-   *  resolution/bind here) and bind it on save, mirroring the params.code flow. */
-  async function onScanCode(payload: string, rawType?: string) {
-    setScannedCode({ value: payload, type: scannerTypeToCodeType(rawType ?? 'other') });
-    setScanOpen(false);
-  }
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
-  const [productLink, setProductLink] = useState('');
+  const [links, setLinks] = useState<string[]>([]);
+  const [linkDraft, setLinkDraft] = useState('');
+  const [tags, setTags] = useState<string[]>([]);
+  const [value, setValue] = useState('');
+  const [valueCurrency, setValueCurrency] = useState<string>(DEFAULT_CURRENCY);
+  const [valueSource, setValueSource] = useState<'ai' | 'manual' | null>(null);
   const [photos, setPhotos] = useState<string[]>([]);
   // A code scanned from within this form (overrides any params.code from the
   // scan tab). Bound to the new item on save.
   const [scannedCode, setScannedCode] = useState<{ value: string; type: ExternalCodeType } | null>(null);
   const [scanOpen, setScanOpen] = useState(false);
   const [enriching, setEnriching] = useState(false);
+  const [enrichNote, setEnrichNote] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  /** Capture a code scanned from within the form. We store the raw value (no
+   *  resolution/bind here) and bind it on save, mirroring the params.code flow. */
+  function onScanCode(payload: string, rawType?: string) {
+    setScannedCode({ value: payload, type: scannerTypeToCodeType(rawType ?? 'other') });
+    setScanOpen(false);
+  }
 
   // The effective code to bind: prefer an in-form scan, fall back to params.
   const codeValue = scannedCode?.value ?? params.code;
   const codeType: ExternalCodeType = scannedCode?.type ?? (params.type as ExternalCodeType) ?? 'other';
+
+  // Tags already in use across the household, offered as one-tap suggestions.
+  const tagSuggestions = useMemo(
+    () => collectTags(allItems ?? []).map((t2) => t2.tag),
+    [allItems],
+  );
 
   // Prefill from existing (edit) or scan params.
   useEffect(() => {
@@ -71,7 +90,11 @@ export default function NewItemScreen() {
       setName(existing.name);
       setDescription(existing.description ?? '');
       setCategory(existing.category ?? '');
-      setProductLink(existing.product_link ?? '');
+      setLinks(itemLinks(existing));
+      setTags(existing.tags ?? []);
+      setValue(existing.estimated_value != null ? String(existing.estimated_value) : '');
+      setValueCurrency(existing.value_currency ?? DEFAULT_CURRENCY);
+      setValueSource((existing.value_source as 'ai' | 'manual' | null) ?? null);
       setPhotos(existing.photo_urls ?? []);
     } else {
       setName(params.name ?? '');
@@ -97,16 +120,38 @@ export default function NewItemScreen() {
     }
   }
 
+  /** Open a link from the editor so the user can check it before saving. */
+  function onOpenLink(raw: string) {
+    const url = normalizeLink(raw);
+    if (!url) return;
+    Linking.openURL(url).catch(() => {
+      Alert.alert(t('items.productLink'), t('errors.generic'));
+    });
+  }
+
+  function onAddLink() {
+    const link = normalizeLink(linkDraft);
+    if (!link) return;
+    setLinks((prev) => mergeLinks(prev, [link]));
+    setLinkDraft('');
+  }
+
   async function onSave() {
     if (!name.trim()) return;
     setError(null);
     try {
+      const parsedValue = parseValueInput(value);
       const payload = {
         name: name.trim(),
         description: description.trim() || null,
         category: category.trim() || null,
-        product_link: productLink.trim() || null,
+        ...linkColumns(mergeLinks(links, linkDraft ? [linkDraft] : [])),
+        tags,
         photo_urls: photos,
+        estimated_value: parsedValue,
+        value_currency: parsedValue == null ? null : valueCurrency,
+        value_source: parsedValue == null ? null : valueSource ?? 'manual',
+        value_updated_at: parsedValue == null ? null : new Date().toISOString(),
       };
       let itemId: string;
       if (editing && params.id) {
@@ -140,28 +185,61 @@ export default function NewItemScreen() {
     }
   }
 
+  /**
+   * Ask the model to fill in what it can. Photos ARE sent — enrichment is
+   * vision-based, so an item with only a picture still gets a name, category,
+   * description and value. Existing links and the hand-set value are passed in
+   * and preserved by `applyEnrichment`.
+   */
   async function onEnrich() {
     if (!activeHouseholdId) return;
     setEnriching(true);
     setError(null);
+    setEnrichNote(null);
     try {
       const res = await enrichItem({
         householdId: activeHouseholdId,
         name,
         description,
-        barcode: params.code,
-        barcodeType: params.type,
+        category,
+        photoUrls: photos,
+        existingLinks: links,
+        barcode: codeValue,
+        barcodeType: codeType,
+        language: profile?.default_language ?? 'en',
       });
-      if (res.name) setName(res.name);
-      if (res.category) setCategory(res.category);
-      if (res.description) setDescription(res.description);
-      if (res.product_link) setProductLink(res.product_link);
+      const patch = applyEnrichment(
+        {
+          name,
+          description,
+          category,
+          links,
+          tags,
+          estimatedValue: parseValueInput(value),
+          valueCurrency,
+          valueSource,
+        },
+        res,
+      );
+      setName(patch.name);
+      setDescription(patch.description);
+      setCategory(patch.category);
+      setLinks(patch.links);
+      setTags(patch.tags);
+      setValue(patch.estimatedValue != null ? String(patch.estimatedValue) : '');
+      setValueCurrency(patch.valueCurrency);
+      setValueSource(patch.valueSource);
+      if (res.rejected_links && res.rejected_links.length > 0) {
+        setEnrichNote(t('items.enrichDroppedLinks', { count: res.rejected_links.length }));
+      }
     } catch (e) {
       setError(errorMessage(e));
     } finally {
       setEnriching(false);
     }
   }
+
+  const canEnrich = photos.length > 0 || !!name.trim() || !!codeValue;
 
   return (
     <FormScreen contentContainerStyle={{ padding: spacing.lg, gap: spacing.md }}>
@@ -181,7 +259,10 @@ export default function NewItemScreen() {
             ) : null}
           </Card>
         ) : !editing ? (
-          <Button title={t('items.scanCode')} variant="ghost" onPress={() => setScanOpen(true)} />
+          <>
+            <Button title={t('items.scanCode')} variant="ghost" onPress={() => setScanOpen(true)} />
+            <Muted style={{ fontSize: 12 }}>{t('codes.optionalHint')}</Muted>
+          </>
         ) : null}
 
         <View style={{ gap: 8 }}>
@@ -193,6 +274,17 @@ export default function NewItemScreen() {
           />
           {photoError ? <ErrorBanner message={photoError} /> : null}
         </View>
+
+        {/* Enrichment sits right under the photos: with a picture attached it
+            can fill in everything below on its own. */}
+        <Button
+          title={photos.length > 0 ? t('items.enrichFromPhoto') : t('items.enrich')}
+          variant="ghost"
+          onPress={onEnrich}
+          loading={enriching}
+          disabled={!canEnrich}
+        />
+        {enrichNote ? <Muted style={{ fontSize: 12 }}>{enrichNote}</Muted> : null}
 
         <View style={{ gap: spacing.md }}>
           <Field label={t('items.name')}>
@@ -207,16 +299,48 @@ export default function NewItemScreen() {
               value={description}
               onChangeText={setDescription}
               multiline
+              style={{ minHeight: 110 }}
             />
           </Field>
-          <Field label={t('items.productLink')}>
-            <Input placeholder={t('items.productLink')} value={productLink} onChangeText={setProductLink} autoCapitalize="none" />
+          <Field label={t('items.value')}>
+            <Input
+              placeholder={t('items.valuePlaceholder')}
+              value={value}
+              onChangeText={(v) => {
+                setValue(v);
+                setValueSource('manual'); // typing makes it the user's number
+              }}
+              keyboardType="decimal-pad"
+            />
+            {valueSource === 'ai' ? <Muted style={{ fontSize: 11 }}>{t('items.valueFromAi')}</Muted> : null}
+          </Field>
+          <Field label={t('items.tags')}>
+            <TagInput tags={tags} onChange={setTags} suggestions={tagSuggestions} />
+          </Field>
+          <Field label={t('items.productLinks')}>
+            <View style={{ gap: 8 }}>
+              <LinksCard
+                links={links}
+                title={t('links.count', { count: links.length })}
+                onOpen={onOpenLink}
+                onRemove={(url) => setLinks((prev) => prev.filter((l) => l !== url))}
+              />
+              <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+                <View style={{ flex: 1 }}>
+                  <Input
+                    placeholder={t('items.productLink')}
+                    value={linkDraft}
+                    onChangeText={setLinkDraft}
+                    onSubmitEditing={onAddLink}
+                    autoCapitalize="none"
+                    keyboardType="url"
+                  />
+                </View>
+                <Button title={t('links.add')} variant="ghost" onPress={onAddLink} disabled={!linkDraft.trim()} />
+              </View>
+            </View>
           </Field>
         </View>
-
-        {!editing ? (
-          <Button title={t('items.enrich')} variant="ghost" onPress={onEnrich} loading={enriching} />
-        ) : null}
 
         {error ? <ErrorBanner message={error} /> : null}
 
