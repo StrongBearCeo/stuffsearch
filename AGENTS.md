@@ -16,15 +16,31 @@ covered by tests before the work is considered done.
   style of the existing tests (`constants.test.ts`, `qrcode.test.ts`,
   `resolveScan.test.ts`, `places.test.ts`): node environment, supabase/RN
   stubbed, exercise every branch including error + edge cases.
+- **Two Jest projects, split by what a test needs.** `*.test.ts` runs in the
+  `logic` project: node environment, react-native stubbed, pure functions from
+  `src/lib` — fast, and where most tests belong. `*.test.tsx` runs in the
+  `components` project: jest-expo + React Native Testing Library, for anything
+  that has to RENDER. Reach for the second when the behaviour is about
+  component state or framework wiring rather than a calculation — three shipped
+  bugs (a scanner that latched after one scan, a pan gesture that never began,
+  a filter chip whose dismissal outlived its screen) were all invisible to the
+  logic project while its own tests stayed green.
+  Note RTL v14's `render`, `rerender` and `fireEvent` are ASYNC; forgetting to
+  await one yields "getByTestId is not a function".
+- **A regression test must be shown to fail.** Reintroduce the bug, watch the
+  new test go red, then restore the fix. A regression test that has never
+  failed is a guess.
 - **Run both gates before finishing, and report results honestly:**
   ```bash
   npx tsc --noEmit   # must pass with zero errors
   npx jest           # must pass; never skip to make it green
   ```
-- **If something can't be unit-tested** under the current node-only Jest config
-  (UI wiring, hooks that call React Query / expo-router / RN primitives), say so
-  explicitly — don't silently skip it. Call it out as "needs device/manual
-  testing" and prefer extracting the testable core into `src/lib/` anyway.
+- **If something genuinely can't be unit-tested** — a real camera, a real
+  multi-touch gesture — say so explicitly rather than skipping in silence, and
+  prefer extracting the testable core into `src/lib/` (or a hook with a
+  `*.test.tsx`) anyway. "Needs device testing" is now a much smaller category
+  than it was: a hook reading route params, a component reacting to props, a
+  reducer over navigation state are all reachable by the `components` project.
 - **Locale files are tested.** `src/lib/__tests__/locales.test.ts` asserts en and
   vi define identical key sets, that no value is empty, and that the `{{count}}`
   strings pluralize under `compatibilityJSON: 'v3'`. Adding a key to one file

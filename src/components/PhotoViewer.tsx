@@ -8,7 +8,7 @@
  * in, the pager's own horizontal scrolling is disabled so a pan drags the
  * image instead of flicking to the next one.
  */
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -26,6 +26,7 @@ import {
   // a pinch is recognised, so pinching over the pager did nothing.
   ScrollView,
 } from 'react-native-gesture-handler';
+import type { ScrollView as ScrollViewType } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -65,6 +66,7 @@ export function PhotoViewer({
   const [index, setIndex] = useState(initialIndex);
   // Paging is disabled while any photo is zoomed in, so a pan moves the image.
   const [zoomed, setZoomed] = useState(false);
+  const pagerRef = useRef<ScrollViewType>(null);
 
   useEffect(() => {
     if (visible) {
@@ -72,6 +74,17 @@ export function PhotoViewer({
       setZoomed(false);
     }
   }, [visible, initialIndex]);
+
+  /**
+   * Jump to the tapped photo. `contentOffset` alone is an iOS-only prop, so on
+   * Android opening the third photo landed on the first and the rest were only
+   * reachable by swiping back. Scrolling explicitly once the pager has laid out
+   * works on both platforms.
+   */
+  const scrollToInitial = useCallback(() => {
+    if (initialIndex <= 0) return;
+    pagerRef.current?.scrollTo({ x: initialIndex * width, y: 0, animated: false });
+  }, [initialIndex, width]);
 
   if (photos.length === 0) return null;
 
@@ -84,11 +97,13 @@ export function PhotoViewer({
       <GestureHandlerRootView style={styles.root}>
         <View style={styles.root}>
         <ScrollView
+          ref={pagerRef}
           horizontal
           pagingEnabled
           scrollEnabled={!zoomed && photos.length > 1}
           showsHorizontalScrollIndicator={false}
           contentOffset={{ x: initialIndex * width, y: 0 }}
+          onLayout={scrollToInitial}
           onMomentumScrollEnd={(e) =>
             setIndex(Math.round(e.nativeEvent.contentOffset.x / Math.max(width, 1)))
           }
@@ -143,6 +158,17 @@ function ZoomablePhoto({
   const translateY = useSharedValue(0);
   const savedX = useSharedValue(0);
   const savedY = useSharedValue(0);
+  /** Mirrors the zoom on the JS thread, so `pan.enabled()` can follow it. */
+  const [isZoomed, setIsZoomed] = useState(false);
+
+  /** Keep the local flag and the parent's pager in step. */
+  const reportZoom = useCallback(
+    (zoomed: boolean) => {
+      setIsZoomed(zoomed);
+      onZoomChange(zoomed);
+    },
+    [onZoomChange],
+  );
 
   const pinch = Gesture.Pinch()
     .onUpdate((e) => {
@@ -172,7 +198,7 @@ function ZoomablePhoto({
       translateY.value = withTiming(settled.y);
       savedX.value = settled.x;
       savedY.value = settled.y;
-      runOnJS(onZoomChange)(savedScale.value > MIN_SCALE);
+      runOnJS(reportZoom)(savedScale.value > MIN_SCALE);
     });
 
   /** Content box the image actually occupies (see the Image style below). */
@@ -182,6 +208,11 @@ function ZoomablePhoto({
   const pan = Gesture.Pan()
     // One finger only: a two-finger drag belongs to the pinch.
     .maxPointers(1)
+    // ONLY while zoomed. An always-on pan still CLAIMS the touch even when its
+    // handler does nothing, which starved the pager: swiping sideways between
+    // photos stopped working. Disabled at scale 1, the horizontal drag reaches
+    // the ScrollView and paging works again.
+    .enabled(isZoomed)
     .onUpdate((e) => {
       if (savedScale.value <= MIN_SCALE) return;
       // Clamp so a zoomed photo can't be flung into empty black space with no
@@ -216,7 +247,7 @@ function ZoomablePhoto({
         savedX.value = 0;
         savedY.value = 0;
       }
-      runOnJS(onZoomChange)(zoomingIn);
+      runOnJS(reportZoom)(zoomingIn);
     });
 
   /**
@@ -232,6 +263,10 @@ function ZoomablePhoto({
    * All three can simply run together: a Tap cancels itself as soon as the
    * finger travels past its slop, so a drag can never be mistaken for a tap,
    * and pan starts on the very first movement.
+   *
+   * `pan.enabled(isZoomed)` above is the other half of the bargain: running
+   * simultaneously means pan would otherwise claim every horizontal drag and
+   * the pager could never page between photos.
    */
   const composed = Gesture.Simultaneous(pinch, pan, doubleTap);
 
