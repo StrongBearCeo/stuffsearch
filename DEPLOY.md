@@ -11,6 +11,24 @@ installed they are fully standalone and work offline from the dev machine.
 Prerequisites (already satisfied on the Windows dev box): JDK 17, Android SDK
 with platform 36 + build-tools 36, and `ANDROID_HOME` set.
 
+**`JAVA_HOME` must point at JDK 17, not a newer one.** The box also has JDK 21
+installed and `JAVA_HOME` has drifted to it; building that way fails in a
+third-party module with
+
+```
+Execution failed for task ':jamsch-expo-speech-recognition:compileReleaseKotlin'.
+> Inconsistent JVM-target compatibility detected for tasks
+  'compileReleaseJavaWithJavac' (17) and 'compileReleaseKotlin' (21).
+```
+
+Expo pins Java to 17 while Kotlin follows the JDK, so the two disagree. Check
+with `java -version`, and override for one build rather than changing the
+machine:
+
+```powershell
+$env:JAVA_HOME = "C:\Program Files\Microsoft\jdk-17.0.20.8-hotspot"
+```
+
 ### Build
 
 ```powershell
