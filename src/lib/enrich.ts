@@ -88,3 +88,84 @@ export function applyEnrichment(
     valueSource: takeValue ? 'ai' : current.valueSource,
   };
 }
+
+/** The fields the form offers a per-field ✨ button for. */
+export const ENRICHABLE_FIELDS = [
+  'name',
+  'description',
+  'category',
+  'tags',
+  'links',
+  'value',
+] as const;
+
+export type EnrichableField = (typeof ENRICHABLE_FIELDS)[number];
+
+/**
+ * Apply a suggestion to exactly ONE field, leaving the rest of the form alone.
+ *
+ * This backs the small ✨ button beside each field: "re-write just the
+ * description", "just estimate the value". Everything `applyEnrichment`
+ * guarantees still holds for the field being changed — links append rather
+ * than replace, tags union — with one deliberate exception:
+ *
+ *   Asking for the VALUE explicitly overwrites a `value_source = 'manual'`
+ *   number. Whole-form enrichment must never touch a value the user typed,
+ *   because they didn't ask it to; tapping ✨ on the value field IS asking.
+ *   That's what makes re-estimating an existing item possible at all — before,
+ *   a value could only ever be set once, during creation.
+ */
+export function applyFieldEnrichment(
+  current: EnrichSnapshot,
+  suggestion: EnrichSuggestion,
+  field: EnrichableField,
+): EnrichPatch {
+  const base: EnrichPatch = {
+    name: current.name,
+    description: current.description,
+    category: current.category,
+    links: [...current.links],
+    tags: [...current.tags],
+    estimatedValue: current.estimatedValue,
+    valueCurrency: (current.valueCurrency || DEFAULT_CURRENCY).toUpperCase(),
+    valueSource: current.valueSource,
+  };
+
+  switch (field) {
+    case 'name':
+      return { ...base, name: preferSuggested(current.name, suggestion.name) };
+    case 'description':
+      return { ...base, description: preferSuggested(current.description, suggestion.description) };
+    case 'category':
+      return { ...base, category: preferSuggested(current.category, suggestion.category) };
+    case 'tags': {
+      let tags = parseTagsInput(current.tags.join(','));
+      for (const tag of suggestion.tags ?? []) tags = addTag(tags, tag);
+      return { ...base, tags };
+    }
+    case 'links': {
+      const incoming = [
+        ...(suggestion.product_link ? [suggestion.product_link] : []),
+        ...(suggestion.product_links ?? []),
+      ];
+      return { ...base, links: mergeLinks(current.links, incoming) };
+    }
+    case 'value': {
+      const suggested =
+        suggestion.estimated_value == null
+          ? null
+          : parseValueInput(String(suggestion.estimated_value));
+      if (suggested == null) return base;
+      return {
+        ...base,
+        estimatedValue: suggested,
+        valueCurrency: (
+          suggestion.value_currency ||
+          current.valueCurrency ||
+          DEFAULT_CURRENCY
+        ).toUpperCase(),
+        valueSource: 'ai',
+      };
+    }
+  }
+}

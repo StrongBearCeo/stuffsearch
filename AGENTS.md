@@ -50,7 +50,36 @@ covered by tests before the work is considered done.
   `moved_by`) and writes an `item_history` row where applicable (use
   `useMoveItem`, not a bare `update`, for moving items between places).
 - Places are nestable via `parent_place_id` — never create a cycle. Use
-  `wouldCreateCycle` from `src/lib/places.ts` before reparenting.
+  `wouldCreateCycle` from `src/lib/places.ts` before reparenting, and
+  `buildPlaceTree` / `flattenPlaceTree` from `src/lib/placeTree.ts` to render
+  the hierarchy.
+- **A thing can be BOTH an item and a place.** `places.item_id` points at the
+  `items` row a place is the storage facet of (a labelled toolbox is a thing
+  worth money AND a container). `convert_item_to_place` is therefore NOT
+  destructive any more — it adds the facet and leaves the item, its value,
+  links, category and codes intact — and it is idempotent. The ITEM is the
+  single source of truth: a database trigger (`sync_place_from_item`) mirrors
+  name / description / tags / photos / location onto the facet, so edit the
+  item, never the linked place. Deleting the item cascades the facet away.
+- **An item can be in several places at once.** `items.current_place_id` is the
+  PRIMARY location and still drives history, search and the location card;
+  extra locations are `item_placements` rows carrying their own `quantity`.
+  `items.quantity` is the total (ten pencils = one row with quantity 10). All
+  the arithmetic lives in `src/lib/quantity.ts` — don't re-derive it in a
+  component. `usePlaceContents` returns the UNION of both sources.
+- **Places carry a photo ARRAY** (`places.photo_urls`), with the legacy
+  `photo_url` scalar mirrored from element 0. Read through `placePhotos` and
+  write through `placePhotoColumns` (`src/lib/photos.ts`); never set one column
+  without the other.
+- **Creating a row uses a client-generated id** (`newUuid` in `src/lib/ids.ts`)
+  plus `createSubmitGuard` (`src/lib/submit.ts`). Together they make a save
+  idempotent: a double tap is dropped synchronously, and a network retry
+  re-sends the same primary key instead of inserting a second row.
+- **`external_codes` are garbage-collected by trigger.** The column is
+  polymorphic so no FK ever cleaned it up; a deleted item left its label bound
+  to a dead row and re-binding it raised 23505. Triggers on `items`/`places`
+  now sweep them. Surface a genuine collision with `isDuplicateCodeError`
+  (`src/lib/errors.ts`), never the raw constraint name.
 - **Codes are optional.** `useCreateItem` / `useCreatePlace` do NOT mint a
   `qr_token`; a thing may have zero, one, or many codes (`qr_token` plus any
   number of `external_codes` rows). Never assume `qr_token` is set — guard every
@@ -63,6 +92,25 @@ covered by tests before the work is considered done.
 - **Enrichment adds, never clobbers.** Route every AI suggestion through
   `applyEnrichment` (`src/lib/enrich.ts`): user-typed product links are kept and
   new ones appended, and a `value_source = 'manual'` value is never overwritten.
+  The per-field ✨ buttons go through `applyFieldEnrichment`, which touches
+  exactly one field. Its ONE deliberate exception: asking for `value`
+  explicitly DOES overwrite a manual value — that request is the user asking
+  for a fresh estimate, and it's what makes re-valuing an existing item
+  possible at all.
+- **`enrich-item` is not photo-only.** It is sent the name, description,
+  category, tags and barcode as well as the photos, plus an optional free-text
+  `instruction` from the user that outranks its own reading of the images.
+  `field` narrows the ANSWER to one key; `entity: 'place'` switches it to
+  describing a storage location (no product links, no resale value).
+- **A scanned payload is sanitised at the camera boundary**, by
+  `sanitizeScanPayload` (`src/lib/scanPayload.ts`), before anything else sees
+  it. A barcode carries arbitrary bytes: a misread or a binary Data Matrix
+  returns control characters, and a NUL survives into the JSON body
+  supabase-js sends, where Postgres rejects the whole request with
+  `unsupported Unicode escape sequence (22P05)` — failing the entire save, not
+  just the code. Sanitising is idempotent and deterministic (so a re-scan of
+  the same label still matches) and is applied again in `resolveScan` and
+  `bindExternalCode` as defence in depth. Never pass a raw `e.data` onwards.
 - **A scan that fails must stay on the camera.** Report it via `ScanCameraModal`'s
   `notice` prop, which draws over the live preview and re-arms `createScanGate`.
   Never surface a scan error only in a card behind the modal — the user can't see
@@ -72,6 +120,20 @@ covered by tests before the work is considered done.
   `useMoveItem` invalidates `['items']`, `['items', itemId]`, and the whole
   `['place_contents']` family (the old place id isn't known at the call site).
   Reparenting a place (`useUpdatePlace`) likewise invalidates
-  `['place_children']` and `['place_contents']`. When adding a new place-scoped
-  query, audit every item/place mutation's `onSuccess` for the keys it must
-  refresh.
+  `['place_children']` and `['place_contents']`. Placement mutations also
+  invalidate `['place_placements']`, and anything that can create or change a
+  facet invalidates `['place_for_item', itemId]`. When adding a new
+  place-scoped query, audit every item/place mutation's `onSuccess` for the
+  keys it must refresh.
+- **Lists use `isRefetching`, not `isFetching`, for pull-to-refresh.** Every
+  background refetch flips `isFetching`, which re-mounts the RefreshControl
+  mid-scroll and makes the list jump; memoize `renderItem`, `keyExtractor` and
+  any lookup Map for the same reason.
+- **Gestures inside a React Native `Modal` need their own
+  `GestureHandlerRootView`.** The app-level one does not reach into the modal's
+  separate native view hierarchy — that is why pinch/double-tap zoom in
+  `PhotoViewer` silently did nothing.
+- **Forward every prop you destructure off a component's props.** `Input`
+  pulled `multiline` out for styling and never passed it on, so every
+  "multiline" field in the app was really single-line: the description box
+  looked tall but never wrapped.

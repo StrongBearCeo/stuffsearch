@@ -97,3 +97,25 @@ export function matchesTags(
   const have = new Set((entityTags ?? []).map((t) => normalizeTag(t)).filter(Boolean));
   return selected.every((s) => have.has(normalizeTag(s)));
 }
+
+/**
+ * Narrow the filter bar's chips to those matching a search string.
+ *
+ * Once a household has a few dozen tags the chip bar is a horizontal scroll
+ * nobody can find anything in, so the bar gains its own search box. Matching is
+ * substring, not prefix — "wall" should find "drywall".
+ *
+ * `selected` tags are always kept visible even when they don't match, because
+ * hiding a filter that is still narrowing the list is how you end up staring
+ * at three results and not knowing why.
+ */
+export function filterTagCounts(
+  tags: TagCount[],
+  query: string | null | undefined,
+  selected: string[] = [],
+): TagCount[] {
+  const q = (query ?? '').trim().toLowerCase();
+  if (!q) return tags;
+  const keep = new Set(selected.map((s) => normalizeTag(s)).filter(Boolean));
+  return tags.filter((t) => t.tag.toLowerCase().includes(q) || keep.has(normalizeTag(t.tag)));
+}

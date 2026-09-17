@@ -42,7 +42,7 @@ export default function AskScreen() {
   const hasAnswer = !!data?.answer;
 
   return (
-    <FormScreen contentContainerStyle={{ padding: spacing.lg, gap: 12 }}>
+    <FormScreen contentContainerStyle={{ padding: spacing.lg, gap: spacing.md }}>
       <H1>{t('search.ask')}</H1>
 
       {/* Input row + actions */}
@@ -55,9 +55,11 @@ export default function AskScreen() {
           if (submitted) setSubmitted(false);
         }}
         multiline
-        style={{ minHeight: 56 }}
+        clearable
+        clearLabel={t('search.clearSearch')}
+        style={{ minHeight: 72 }}
       />
-      <View style={{ flexDirection: 'row', gap: 8 }}>
+      <View style={{ flexDirection: 'row', gap: spacing.sm, alignItems: 'center' }}>
         <View style={{ flex: 1 }}>
           <Button
             title={t('search.ask')}
@@ -74,7 +76,7 @@ export default function AskScreen() {
 
       {/* Empty state: intro + tappable example prompts. */}
       {!submitted && !hasAnswer ? (
-        <View style={{ gap: 8, marginTop: spacing.sm }}>
+        <View style={{ gap: spacing.sm, marginTop: spacing.sm }}>
           <Muted>{t('search.askIntro')}</Muted>
           {EXAMPLES.map((ex) => (
             <TouchableOpacity
@@ -108,7 +110,7 @@ export default function AskScreen() {
 
       {/* Answer. */}
       {hasAnswer && !isFetching ? (
-        <View style={{ gap: 8 }}>
+        <View style={{ gap: spacing.sm, marginTop: spacing.sm }}>
           <Body style={{ fontWeight: '700' }}>{t('search.askAnswer')}</Body>
           <Card>
             <Body style={{ fontSize: 16 }}>{data!.answer}</Body>
@@ -118,7 +120,7 @@ export default function AskScreen() {
 
       {/* Sources — tappable to open the item. */}
       {data?.sources && data.sources.length > 0 && !isFetching ? (
-        <View style={{ gap: 8 }}>
+        <View style={{ gap: spacing.sm, marginTop: spacing.sm }}>
           <Body style={{ fontWeight: '700' }}>{t('search.results')}</Body>
           {data.sources.map((s: { item_id: string; name: string; place_name: string | null }) => (
             <TouchableOpacity

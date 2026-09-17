@@ -158,6 +158,54 @@ export type Database = {
           },
         ]
       }
+      item_placements: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          item_id: string
+          note: string | null
+          place_id: string
+          quantity: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          item_id: string
+          note?: string | null
+          place_id: string
+          quantity?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          item_id?: string
+          note?: string | null
+          place_id?: string
+          quantity?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'item_placements_item_id_fkey'
+            columns: ['item_id']
+            isOneToOne: false
+            referencedRelation: 'items'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'item_placements_place_id_fkey'
+            columns: ['place_id']
+            isOneToOne: false
+            referencedRelation: 'places'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       items: {
         Row: {
           category: string | null
@@ -177,6 +225,7 @@ export type Database = {
           product_link: string | null
           product_links: string[]
           qr_token: string | null
+          quantity: number
           tags: string[]
           updated_at: string
           value_currency: string | null
@@ -201,6 +250,7 @@ export type Database = {
           product_link?: string | null
           product_links?: string[]
           qr_token?: string | null
+          quantity?: number
           tags?: string[]
           updated_at?: string
           value_currency?: string | null
@@ -225,6 +275,7 @@ export type Database = {
           product_link?: string | null
           product_links?: string[]
           qr_token?: string | null
+          quantity?: number
           tags?: string[]
           updated_at?: string
           value_currency?: string | null
@@ -255,9 +306,11 @@ export type Database = {
           description: string | null
           household_id: string
           id: string
+          item_id: string | null
           name: string
           parent_place_id: string | null
           photo_url: string | null
+          photo_urls: string[]
           qr_token: string | null
           tags: string[]
         }
@@ -267,9 +320,11 @@ export type Database = {
           description?: string | null
           household_id: string
           id?: string
+          item_id?: string | null
           name: string
           parent_place_id?: string | null
           photo_url?: string | null
+          photo_urls?: string[]
           qr_token?: string | null
           tags?: string[]
         }
@@ -279,13 +334,22 @@ export type Database = {
           description?: string | null
           household_id?: string
           id?: string
+          item_id?: string | null
           name?: string
           parent_place_id?: string | null
           photo_url?: string | null
+          photo_urls?: string[]
           qr_token?: string | null
           tags?: string[]
         }
         Relationships: [
+          {
+            foreignKeyName: 'places_item_id_fkey'
+            columns: ['item_id']
+            isOneToOne: false
+            referencedRelation: 'items'
+            referencedColumns: ['id']
+          },
           {
             foreignKeyName: 'places_household_id_fkey'
             columns: ['household_id']
@@ -339,6 +403,10 @@ export type Database = {
       convert_item_to_place: {
         Args: { _item_id: string; _user_id: string }
         Returns: string
+      }
+      place_would_cycle: {
+        Args: { _new_parent: string; _place_id: string }
+        Returns: boolean
       }
       resolve_code: {
         Args: { _code_value: string; _user_id: string }

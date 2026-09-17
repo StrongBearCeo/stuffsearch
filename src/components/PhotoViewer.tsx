@@ -15,11 +15,17 @@ import {
   Modal,
   TouchableOpacity,
   StyleSheet,
-  ScrollView,
   useWindowDimensions,
 } from 'react-native';
 import { Image } from 'expo-image';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import {
+  Gesture,
+  GestureDetector,
+  GestureHandlerRootView,
+  // The RNGH ScrollView, not RN's: a native ScrollView claims the touch before
+  // a pinch is recognised, so pinching over the pager did nothing.
+  ScrollView,
+} from 'react-native-gesture-handler';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -67,7 +73,12 @@ export function PhotoViewer({
 
   return (
     <Modal visible={visible} animationType="fade" onRequestClose={onClose} transparent={false}>
-      <View style={styles.root}>
+      {/* A React Native Modal renders in its OWN native view hierarchy, which
+          the app-level GestureHandlerRootView does not reach into — so every
+          gesture-handler gesture inside it was silently dead and neither pinch
+          nor double-tap zoom worked. The modal needs its own root. */}
+      <GestureHandlerRootView style={styles.root}>
+        <View style={styles.root}>
         <ScrollView
           horizontal
           pagingEnabled
@@ -105,7 +116,8 @@ export function PhotoViewer({
             </Text>
           </View>
         ) : null}
-      </View>
+        </View>
+      </GestureHandlerRootView>
     </Modal>
   );
 }

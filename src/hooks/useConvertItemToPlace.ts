@@ -1,10 +1,14 @@
-/** useConvertItemToPlace — atomically convert an item into a place via the
- *  `convert_item_to_place` Postgres RPC (one transaction, no partial failure).
+/** useConvertItemToPlace — give an item the storage abilities of a place, via
+ *  the `convert_item_to_place` Postgres RPC.
  *
- *  The RPC carries over the item's name, description, first photo, household,
- *  and location (item.current_place_id → place.parent_place_id); re-points all
- *  its bound external_codes at the new place; and deletes the item (history
- *  rows cascade). Returns the new place id so the caller can navigate to it. */
+ *  This is NOT destructive any more. The RPC used to copy a few of the item's
+ *  fields onto a new place and then DELETE the item, silently discarding its
+ *  category, value, product links and extra photos. It now creates a place
+ *  FACET (`places.item_id` → the item) carrying the name, description, photos,
+ *  tags and location across, and leaves the item entirely intact: the thing
+ *  stays an item and additionally becomes somewhere you can store things.
+ *  Codes stay bound to the item. Idempotent — calling it twice returns the
+ *  same facet id. */
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
@@ -26,11 +30,14 @@ export function useConvertItemToPlace() {
       // RPC returns the new place id (a uuid string).
       return data as string;
     },
-    onSuccess: () => {
-      // The item is gone and a new place exists; refresh every affected view.
+    onSuccess: (_placeId, itemId) => {
+      // A new place exists and the item now has a facet; refresh every view
+      // that shows either side of the pair.
       qc.invalidateQueries({ queryKey: ITEMS_KEY });
       qc.invalidateQueries({ queryKey: PLACES_KEY });
       qc.invalidateQueries({ queryKey: ['place_contents'] });
+      qc.invalidateQueries({ queryKey: ['place_children'] });
+      qc.invalidateQueries({ queryKey: ['place_for_item', itemId] });
       qc.invalidateQueries({ queryKey: ['external_codes'] });
     },
   });

@@ -1,5 +1,5 @@
 /** Scan tab: live camera + resolution state machine. */
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { View, Modal, KeyboardAvoidingView, Platform, useWindowDimensions, TouchableOpacity } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useRouter, useFocusEffect } from 'expo-router';
@@ -7,6 +7,8 @@ import { Screen, Button, Input, Card, Body, Muted, H2 } from '../../src/componen
 import { ScanOverlay } from '../../src/components/ScanOverlay';
 import { CreateFromCodeSheet } from '../../src/components/CreateFromCodeSheet';
 import { useScan } from '../../src/hooks/useScan';
+import { createScanGate } from '../../src/lib/scanGate';
+import { sanitizeScanPayload, isUsableScanPayload } from '../../src/lib/scanPayload';
 import { scannerTypeToCodeType } from '../../src/lib/constants';
 import { useHousehold } from '../../src/lib/household';
 import { colors } from '../../src/theme';
@@ -19,14 +21,27 @@ import type { ExternalCodeType } from '../../src/lib/supabase';
 export default function ScanScreen() {
   const { t } = useTranslation();
   const router = useRouter();
-  const { resolve, reset, outcome } = useScan();
+  const { resolve, reset } = useScan();
   const { activeHousehold } = useHousehold();
   const insets = useSafeAreaInsets();
   const { width: winWidth } = useWindowDimensions();
   const sheetWidth = Math.min(winWidth - 32, CONTENT_MAX_WIDTH);
 
   const [permission, requestPermission] = useCameraPermissions();
-  const [scanned, setScanned] = useState(false);
+  /**
+   * Repeat-scan gating.
+   *
+   * This used to be a one-shot `scanned` boolean cleared only when `outcome`
+   * went falsy — so any path that left an outcome standing (a cross-household
+   * match waiting on the prompt, a create sheet that was dismissed by the back
+   * gesture) latched the scanner shut and every later scan was silently
+   * dropped. That is exactly "I scan once, then scanning stops working".
+   *
+   * `createScanGate` is the same gate the in-screen camera modal uses: one
+   * accept per cooldown, the same payload suppressed a little longer, and an
+   * explicit re-arm when we're done with a scan but staying on the camera.
+   */
+  const gate = useMemo(() => createScanGate(), []);
   const [manual, setManual] = useState('');
   const [manualOpen, setManualOpen] = useState(false);
   const [create, setCreate] = useState<{ value: string; type: ExternalCodeType } | null>(null);
@@ -36,22 +51,25 @@ export default function ScanScreen() {
   // tear the native camera down; returning re-mounts it fresh. Leaving it
   // mounted across blur/focus causes the intermittent black-preview symptom.
   const [focused, setFocused] = useState(false);
-  useFocusEffect(() => {
-    setFocused(true);
-    return () => setFocused(false);
-  });
-
-  // Reset scanned lock when outcome clears.
-  useEffect(() => {
-    if (!outcome) setScanned(false);
-  }, [outcome]);
+  // useFocusEffect re-subscribes whenever the callback identity changes, so an
+  // inline arrow re-ran the effect on EVERY render, tearing the camera down and
+  // rebuilding it repeatedly. useCallback pins it to mount/focus.
+  useFocusEffect(
+    useCallback(() => {
+      setFocused(true);
+      // A fresh camera session deserves a fresh gate: returning to the tab
+      // should always accept the next scan, including a repeat of the last one.
+      gate.reset();
+      return () => setFocused(false);
+    }, [gate]),
+  );
 
   async function handle(payload: string, rawType?: string) {
-    if (scanned || !payload) return;
-    setScanned(true);
+    if (!payload) return;
+    // Manual entry bypasses the frame gate (there is no repeating frame).
     const o = await resolve(payload);
     if (!o) {
-      setScanned(false);
+      gate.rearm();
       return;
     }
     hapticSuccess();
@@ -81,6 +99,8 @@ export default function ScanScreen() {
   function closeSheet() {
     setCreate(null);
     reset();
+    // Back on the live camera — accept the next scan immediately.
+    gate.rearm();
   }
 
   if (!permission) {
@@ -111,7 +131,19 @@ export default function ScanScreen() {
           <CameraView
             style={{ flex: 1 }}
             active
-            onBarcodeScanned={(e) => handle(e.data, e.type)}
+            onBarcodeScanned={(e) => {
+              // onBarcodeScanned fires many times a second while a code sits
+              // in frame; the gate turns that into one accepted scan.
+              if (!gate.accept(e.data, Date.now())) return;
+              // Clean once, at the boundary — a payload with control bytes in
+              // it would otherwise reach the insert and fail the save.
+              const payload = sanitizeScanPayload(e.data);
+              if (!isUsableScanPayload(payload)) {
+                setPrompt(t('scan.unreadable'));
+                return;
+              }
+              handle(payload, e.type);
+            }}
             barcodeScannerSettings={{
             // SDK 54 replaced barcodeScannerEnabled with an explicit allow-list.
             // Cover QR + the common retail/industrial symbologies.
@@ -140,7 +172,7 @@ export default function ScanScreen() {
               <Card>
                 <Body style={{ fontWeight: '600' }}>{prompt}</Body>
                 <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
-                  <Button title={t('common.done')} onPress={() => { setPrompt(null); reset(); }} />
+                  <Button title={t('common.done')} onPress={() => { setPrompt(null); reset(); gate.rearm(); }} />
                 </View>
               </Card>
             </View>

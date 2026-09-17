@@ -20,6 +20,7 @@ import { View, Text, Modal, TouchableOpacity, StyleSheet, ActivityIndicator } fr
 import { CameraView } from 'expo-camera';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { createScanGate } from '../lib/scanGate';
+import { sanitizeScanPayload, isUsableScanPayload } from '../lib/scanPayload';
 import { colors, radius, spacing, tint } from '../theme';
 
 export interface ScanCameraModalProps {
@@ -41,6 +42,9 @@ export interface ScanCameraModalProps {
   onDismissNotice?: () => void;
   /** Show a spinner while the caller resolves the last scan. */
   busy?: boolean;
+  /** A frame decoded to nothing usable (pure binary / a bad read). The caller
+   *  should surface a "couldn't read that" notice and let the user try again. */
+  onUnreadable?: () => void;
 }
 
 const BARCODE_TYPES = [
@@ -68,6 +72,7 @@ export function ScanCameraModal({
   noticeTone = 'error',
   onDismissNotice,
   busy,
+  onUnreadable,
 }: ScanCameraModalProps) {
   const insets = useSafeAreaInsets();
   const gate = useMemo(() => createScanGate(), []);
@@ -93,7 +98,15 @@ export function ScanCameraModal({
   function handleBarcodes(e: { data: string; type?: string }) {
     if (busy) return;
     if (!gate.accept(e.data, Date.now())) return;
-    onScan(e.data, e.type);
+    // Clean the payload HERE, once, so nothing downstream ever sees control
+    // characters: a NUL survives as far as the insert and then kills the whole
+    // save with `unsupported Unicode escape sequence (22P05)`.
+    const payload = sanitizeScanPayload(e.data);
+    if (!isUsableScanPayload(payload)) {
+      onUnreadable?.();
+      return;
+    }
+    onScan(payload, e.type);
   }
 
   const noticeColor = noticeTone === 'error' ? colors.danger : colors.success;

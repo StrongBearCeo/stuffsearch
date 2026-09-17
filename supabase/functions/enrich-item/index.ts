@@ -13,6 +13,8 @@
 //      being handed to the user as a working product page.
 import { json, corsHeaders } from '../_shared/cors.ts';
 
+type EnrichField = 'name' | 'description' | 'category' | 'tags' | 'links' | 'value';
+
 interface EnrichRequest {
   householdId: string;
   name?: string;
@@ -20,10 +22,30 @@ interface EnrichRequest {
   category?: string;
   photoUrls?: string[];
   existingLinks?: string[];
+  existingTags?: string[];
   barcode?: string;
   barcodeType?: string;
   language?: 'en' | 'vi';
+  /** Free-text follow-up from the user; highest-priority instruction. */
+  instruction?: string;
+  /** Answer with ONE field only (the per-field ✨ buttons). */
+  field?: EnrichField;
+  /** 'item' (default) or 'place' — a storage location, not a product. */
+  entity?: 'item' | 'place';
 }
+
+/** Which JSON keys the model is asked for, per requested field. */
+const FIELD_KEYS: Record<EnrichField, string[]> = {
+  name: ['name'],
+  description: ['description'],
+  category: ['category'],
+  tags: ['tags'],
+  links: ['product_links'],
+  value: ['estimated_value', 'value_currency'],
+};
+
+/** A follow-up instruction is user text going into a prompt — cap it. */
+const MAX_INSTRUCTION = 500;
 
 /** Images sent to the model. More than this is cost without much gain. */
 const MAX_PHOTOS = 4;
@@ -120,32 +142,74 @@ Deno.serve(async (req: Request) => {
     return json({ error: 'Invalid JSON' }, 400);
   }
 
-  const { name, description, category, photoUrls, existingLinks, barcode, barcodeType, language } = body;
+  const {
+    name, description, category, photoUrls, existingLinks, existingTags,
+    barcode, barcodeType, language, instruction, field, entity,
+  } = body;
   const photos = (photoUrls ?? []).filter((u) => typeof u === 'string' && u.length > 0);
   const known = cleanLinks(existingLinks);
-  if (!name && photos.length === 0 && !barcode) {
+  const knownTags = (existingTags ?? []).filter((t) => typeof t === 'string' && t.length > 0);
+  const isPlace = entity === 'place';
+  const followUp = (instruction ?? '').trim().slice(0, MAX_INSTRUCTION);
+  if (!name && photos.length === 0 && !barcode && !followUp) {
     return json({ error: 'Nothing to enrich from' }, 400);
   }
 
   const langName = language === 'vi' ? 'Vietnamese' : 'English';
+
+  // All available keys; narrowed when the caller asked for a single field via
+  // the per-field ✨ button. The model still SEES every hint either way — a
+  // good description needs the photos and the name — only the ANSWER narrows.
+  const allKeys: Record<string, string> = {
+    name: isPlace
+      ? '  name           a short, findable name for this storage location (e.g. "Top left black shelf, garage")'
+      : '  name           short product name (brand + model when visible)',
+    category: '  category       one lowercase word',
+    description: isPlace
+      ? '  description    one or two sentences: where this place is and what belongs in it'
+      : '  description    one or two sentences: what it is, key specs, visible condition',
+    product_links: [
+      '  product_links  array of 0-3 URLs to pages where this product can be bought or read about.',
+      '                 ONLY include URLs you are confident actually exist. A wrong URL is worse',
+      '                 than none — prefer a retailer search URL or the manufacturer homepage over',
+      '                 a guessed deep product path. Do NOT repeat links the user already has.',
+    ].join('\n'),
+    tags: '  tags           array of 0-4 short lowercase labels useful for filtering',
+    estimated_value:
+      '  estimated_value  approximate current second-hand value as a NUMBER, no currency symbol',
+    value_currency: '  value_currency   ISO code for that number, e.g. USD',
+  };
+
+  // A place is not a product: no purchase links, no resale value.
+  const placeKeys = ['name', 'category', 'description', 'tags'];
+  const defaultKeys = isPlace ? placeKeys : Object.keys(allKeys);
+  const wantedKeys = field
+    ? FIELD_KEYS[field].filter((k) => defaultKeys.includes(k))
+    : defaultKeys;
+  // A place has no links/value to give, so a ✨ on those fields has no answer.
+  if (wantedKeys.length === 0) {
+    return json({ error: 'That field cannot be suggested for this kind of thing' }, 400);
+  }
+
+  const subject = isPlace
+    ? 'a single storage place in a household (a room, a shelf, a box, a container)'
+    : 'a single household item';
+
   const systemPrompt = [
-    'You are an inventory assistant. You are given hints about a single household item:',
+    `You are an inventory assistant. You are given hints about ${subject}:`,
     'photos, a barcode, and whatever the user has typed so far.',
-    'Identify the item — READ THE PHOTOS CAREFULLY: brand names, model numbers, labels,',
-    'size markings and visible condition are all evidence. If photos are provided, base your',
-    'answer primarily on them.',
+    isPlace
+      ? 'Describe the place — READ THE PHOTOS CAREFULLY: what kind of container or furniture it is,'
+      : 'Identify the item — READ THE PHOTOS CAREFULLY: brand names, model numbers, labels,',
+    isPlace
+      ? 'any labels or markings, and what is visibly stored in it are all evidence.'
+      : 'size markings and visible condition are all evidence.',
+    'If photos are provided, base your answer primarily on them.',
     '',
-    'Respond ONLY with a JSON object, no prose, with these keys:',
-    '  name           short product name (brand + model when visible)',
-    '  category       one lowercase word',
-    '  description    one or two sentences: what it is, key specs, visible condition',
-    '  product_links  array of 0-3 URLs to pages where this product can be bought or read about.',
-    '                 ONLY include URLs you are confident actually exist. A wrong URL is worse',
-    '                 than none — prefer a retailer search URL or the manufacturer homepage over',
-    '                 a guessed deep product path. Do NOT repeat links the user already has.',
-    '  tags           array of 0-4 short lowercase labels useful for filtering',
-    '  estimated_value  approximate current second-hand value as a NUMBER, no currency symbol',
-    '  value_currency   ISO code for that number, e.g. USD',
+    field
+      ? `Respond ONLY with a JSON object, no prose, containing EXACTLY these keys and nothing else:`
+      : 'Respond ONLY with a JSON object, no prose, with these keys:',
+    ...wantedKeys.map((k) => allKeys[k]),
     '',
     `Write name/description in ${langName}.`,
   ].join('\n');
@@ -154,12 +218,18 @@ Deno.serve(async (req: Request) => {
     name ? `Current name: ${name}` : null,
     description ? `Current description: ${description}` : null,
     category ? `Current category: ${category}` : null,
+    knownTags.length ? `Current tags: ${knownTags.join(', ')}` : null,
     barcode ? `Barcode (${barcodeType ?? 'unknown'}): ${barcode}` : null,
     known.length
       ? `Links the user already saved (do NOT repeat these, do NOT contradict them — they describe the same product):\n${known.map((l) => `  - ${l}`).join('\n')}`
       : null,
     photos.length ? `${photos.length} photo(s) attached.` : 'No photos attached.',
-    'Suggest enriched fields.',
+    // Last, so it is the freshest thing in context, and clearly delimited so
+    // it reads as the user's request rather than as part of the item data.
+    followUp
+      ? `The user added this instruction — follow it, and let it override your own reading of the photos where they conflict:\n"""\n${followUp}\n"""`
+      : null,
+    field ? `Suggest ONLY the ${field} field.` : 'Suggest enriched fields.',
   ]
     .filter(Boolean)
     .join('\n');
@@ -200,11 +270,16 @@ Deno.serve(async (req: Request) => {
     const parsed = JSON.parse(text) as Record<string, unknown>;
 
     // Collect candidate links (both shapes the model might use), drop anything
-    // the user already has, then verify what's left.
-    const candidates = cleanLinks([
-      ...(Array.isArray(parsed.product_links) ? parsed.product_links : []),
-      ...(typeof parsed.product_link === 'string' ? [parsed.product_link] : []),
-    ]).filter((u) => !known.includes(u));
+    // the user already has, then verify what's left. Skipped entirely when the
+    // caller didn't ask for links — HTTP-checking six URLs is the slowest part
+    // of this function and a per-field ✨ on the name shouldn't pay for it.
+    const wantsLinks = wantedKeys.includes('product_links');
+    const candidates = wantsLinks
+      ? cleanLinks([
+          ...(Array.isArray(parsed.product_links) ? parsed.product_links : []),
+          ...(typeof parsed.product_link === 'string' ? [parsed.product_link] : []),
+        ]).filter((u) => !known.includes(u))
+      : [];
 
     const checked = await Promise.all(
       candidates.slice(0, MAX_LINK_CHECKS).map(async (url) => ({ url, alive: await linkIsAlive(url) })),

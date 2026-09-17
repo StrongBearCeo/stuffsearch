@@ -10,8 +10,8 @@
  *                          policies, triggers, functions) to detect drift
  *                          against supabase/migrations
  *   - storage/<bucket>/... every object of every non-empty bucket, downloaded
- *                          via public URLs (management mode only), verified
- *                          against the size recorded in storage.objects
+ *                          via public URLs and verified against its recorded
+ *                          size (works in BOTH collection modes)
  *   - manifest.json        row counts + storage summary + metadata
  *
  * Two collection modes, tried in order:
@@ -19,8 +19,14 @@
  *      access token (env SUPABASE_ACCESS_TOKEN, else the token ZCode's MCP
  *      server uses in .zcode/config.json). Full admin read incl. auth schema
  *      + storage object listing.
- *   2. rest — PostgREST + auth admin API with SUPABASE_SERVICE_ROLE_KEY from
- *      .env (no auth password hashes; no storage download).
+ *   2. rest — PostgREST + auth admin API with a secret key from .env (no auth
+ *      password hashes; no storage download). Supabase has deprecated the
+ *      legacy `service_role` JWT in favour of secret keys issued through JWT
+ *      Signing Keys, so SUPABASE_SECRET_KEY (an `sb_secret_…` value) is read
+ *      first and SUPABASE_SERVICE_ROLE_KEY kept as a fallback for older .env
+ *      files. Either name accepts either key format — the variable name is
+ *      only our convention, it is the VALUE Supabase validates. Storage IS
+ *      still downloaded in this mode, by walking the Storage REST API.
  *
  * Never commit the output — backups/ is gitignored. Pure SQL rendering and
  * storage-path helpers live in src/lib/backup.ts (unit-tested there).
@@ -33,12 +39,16 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import {
   insertStatements,
+  isStorageFolder,
+  joinStoragePrefix,
   publicStorageObjectUrl,
   quoteIdent,
   safeStoragePath,
   sequenceReset,
   sqlLiteral,
+  storageObjectSize,
   tableColumns,
+  type StorageListEntry,
 } from '../src/lib/backup';
 
 type Row = Record<string, unknown>;
@@ -86,6 +96,11 @@ function timestamp(d = new Date()): string {
 interface ManagementAccess {
   token: string;
   ref: string;
+}
+
+/** The secret (service-role) key, under either the modern or legacy name. */
+function secretKey(env: Record<string, string>): string {
+  return env.SUPABASE_SECRET_KEY ?? env.SUPABASE_SERVICE_ROLE_KEY ?? '';
 }
 
 /** Token resolution: env wins, else the PAT ZCode's own Supabase MCP server
@@ -273,27 +288,128 @@ interface StorageSummary {
   [bucket: string]: { objects: number; bytes: number };
 }
 
-/** Download every object of every non-empty bucket into outDir/storage/.
- * Sizes are verified against storage.objects metadata; any mismatch or HTTP
- * error fails the backup. Public buckets only — signing URLs for private ones
- * would need a valid service-role key. */
-async function backupStorage(
-  access: ManagementAccess,
+/** One bucket plus the objects we enumerated in it. */
+interface BucketListing {
+  id: string;
+  public: boolean;
+  objects: Row[];
+}
+
+const STORAGE_PAGE = 100;
+
+/**
+ * List one level of a bucket through the Storage REST API.
+ *
+ * Needs only a secret key, which is why this works in REST mode where reading
+ * `storage.objects` (Management API only) does not.
+ */
+async function storageListLevel(
   url: string,
+  key: string,
+  bucket: string,
+  prefix: string,
+  offset: number
+): Promise<StorageListEntry[]> {
+  const base = url.replace(/\/+$/, '');
+  const res = await fetch(`${base}/storage/v1/object/list/${encodeURIComponent(bucket)}`, {
+    method: 'POST',
+    headers: {
+      apikey: key,
+      Authorization: `Bearer ${key}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      prefix,
+      limit: STORAGE_PAGE,
+      offset,
+      sortBy: { column: 'name', order: 'asc' },
+    }),
+  });
+  if (!res.ok) {
+    throw new Error(`Storage list failed for ${bucket}/${prefix}: ${res.status}`);
+  }
+  return (await res.json()) as StorageListEntry[];
+}
+
+/** Walk a bucket depth-first, returning every object with its recorded size.
+ *  The list endpoint returns one flat level at a time, synthesising "folders"
+ *  from the `/` separators in object names, so nesting has to be followed. */
+async function storageWalk(
+  url: string,
+  key: string,
+  bucket: string,
+  prefix = ''
+): Promise<Row[]> {
+  const out: Row[] = [];
+  let offset = 0;
+  for (;;) {
+    const page = await storageListLevel(url, key, bucket, prefix, offset);
+    if (page.length === 0) break;
+    for (const entry of page) {
+      const full = joinStoragePrefix(prefix, entry.name);
+      if (isStorageFolder(entry)) {
+        out.push(...(await storageWalk(url, key, bucket, full)));
+      } else {
+        out.push({ name: full, metadata: { size: storageObjectSize(entry) } });
+      }
+    }
+    if (page.length < STORAGE_PAGE) break;
+    offset += page.length;
+  }
+  return out;
+}
+
+/** Download every object of every non-empty bucket into outDir/storage/.
+ * Sizes are verified against the recorded metadata; any mismatch or HTTP error
+ * fails the backup. Public buckets only — signing URLs for private ones would
+ * need extra work.
+ *
+ * Objects are enumerated via the Management API when a platform token is
+ * available (it reads `storage.objects` directly) and otherwise by walking the
+ * Storage REST API with the secret key. Photos are the ONE thing in this app
+ * that cannot be reconstructed from anything else, so a backup that silently
+ * skipped them was the least useful kind of backup. */
+async function backupStorage(
+  access: ManagementAccess | null,
+  url: string,
+  key: string,
   outDir: string
 ): Promise<StorageSummary> {
   const summary: StorageSummary = {};
-  const bucketRows = await mgmtQuery(
-    access,
-    `select id, public from storage.buckets order by id`
-  );
 
-  for (const bucket of bucketRows) {
-    const bucketId = String(bucket.id);
-    const objects = await mgmtQuery(
-      access,
-      `select name, metadata from storage.objects where bucket_id = ${sqlLiteral(bucketId)} order by name`
-    );
+  const buckets: BucketListing[] = [];
+  if (access) {
+    const bucketRows = await mgmtQuery(access, `select id, public from storage.buckets order by id`);
+    for (const bucket of bucketRows) {
+      const bucketId = String(bucket.id);
+      buckets.push({
+        id: bucketId,
+        public: !!bucket.public,
+        objects: await mgmtQuery(
+          access,
+          `select name, metadata from storage.objects where bucket_id = ${sqlLiteral(bucketId)} order by name`
+        ),
+      });
+    }
+  } else {
+    const base = url.replace(/\/+$/, '');
+    const res = await fetch(`${base}/storage/v1/bucket`, {
+      headers: { apikey: key, Authorization: `Bearer ${key}` },
+    });
+    if (!res.ok) throw new Error(`Storage bucket list failed: ${res.status}`);
+    const rows = (await res.json()) as { id: string; public?: boolean }[];
+    for (const b of rows) {
+      buckets.push({
+        id: b.id,
+        public: !!b.public,
+        objects: await storageWalk(url, key, b.id),
+      });
+    }
+  }
+
+  for (const bucket of buckets) {
+    const bucketId = bucket.id;
+    const objects = bucket.objects;
     if (objects.length === 0) continue;
     if (!bucket.public) {
       throw new Error(
@@ -346,9 +462,22 @@ async function main(): Promise<void> {
 
   const access = findManagementAccess(env);
   console.log(`Mode: ${access ? 'management API' : 'REST (service-role key)'}`);
-  const dump = access
-    ? await collectViaManagement(env)
-    : await collectViaRest(url, env.SUPABASE_SERVICE_ROLE_KEY ?? '');
+  // A stale platform token used to abort the whole backup with a bare 401.
+  // A backup that runs with less coverage beats no backup at all, so fall
+  // back to the service-role REST path instead — loudly, so the missing
+  // auth-hashes / storage objects aren't a silent surprise at restore time.
+  let dump: Dump;
+  if (access) {
+    try {
+      dump = await collectViaManagement(env);
+    } catch (e) {
+      console.warn(`Management API unavailable (${(e as Error).message})`);
+      console.warn('Falling back to REST mode: no auth password hashes (storage is still included).');
+      dump = await collectViaRest(url, secretKey(env));
+    }
+  } else {
+    dump = await collectViaRest(url, secretKey(env));
+  }
 
   const generatedAt = new Date();
   const outDir = path.resolve(__dirname, '..', 'backups', `backup-${timestamp(generatedAt)}`);
@@ -395,11 +524,15 @@ async function main(): Promise<void> {
   );
 
   console.log('Storage:');
-  const storageSummary =
-    dump.mode === 'management' && access
-      ? await backupStorage(access, url, outDir)
-      : (console.log('  skipped — storage download needs the Management API token'), {});
-  if (Object.keys(storageSummary).length === 0 && dump.mode === 'management') {
+  // Enumerate via the Management API when we actually used it, otherwise via
+  // the Storage REST API with the secret key. Either way, the photos come down.
+  const storageSummary = await backupStorage(
+    dump.mode === 'management' ? access : null,
+    url,
+    secretKey(env),
+    outDir
+  );
+  if (Object.keys(storageSummary).length === 0) {
     console.log('  no objects found in any bucket');
   }
 

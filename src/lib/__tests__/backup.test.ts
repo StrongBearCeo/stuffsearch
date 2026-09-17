@@ -1,12 +1,15 @@
 /** Unit tests for src/lib/backup.ts — pure SQL rendering, no I/O. */
 import {
   insertStatements,
+  isStorageFolder,
+  joinStoragePrefix,
   publicStorageObjectUrl,
   quoteIdent,
   quoteQualifiedTable,
   safeStoragePath,
   sequenceReset,
   sqlLiteral,
+  storageObjectSize,
   tableColumns,
 } from '@/lib/backup';
 
@@ -164,5 +167,59 @@ describe('publicStorageObjectUrl', () => {
     expect(publicStorageObjectUrl('https://x.supabase.co', 'my bucket', 'a.png')).toBe(
       'https://x.supabase.co/storage/v1/object/public/my%20bucket/a.png'
     );
+  });
+});
+
+describe('storage listing helpers (REST mode)', () => {
+  describe('isStorageFolder', () => {
+    it('treats a null id as a folder — that is how the API marks one', () => {
+      expect(isStorageFolder({ name: 'user-uuid', id: null })).toBe(true);
+    });
+
+    it('treats a real id as an object', () => {
+      expect(isStorageFolder({ name: 'photo.jpeg', id: 'abc-123' })).toBe(false);
+    });
+
+    it('treats a missing id as a folder', () => {
+      expect(isStorageFolder({ name: 'user-uuid' })).toBe(true);
+    });
+  });
+
+  describe('joinStoragePrefix', () => {
+    it('joins a prefix and a name', () => {
+      expect(joinStoragePrefix('a/b', 'c.jpg')).toBe('a/b/c.jpg');
+    });
+
+    it('returns the bare name at the root', () => {
+      expect(joinStoragePrefix('', 'c.jpg')).toBe('c.jpg');
+    });
+
+    it('does not double the separator', () => {
+      expect(joinStoragePrefix('a/b/', 'c.jpg')).toBe('a/b/c.jpg');
+    });
+
+    it('builds the real shape this app stores: uid/household/entity/file', () => {
+      const p = joinStoragePrefix(
+        joinStoragePrefix(joinStoragePrefix('', 'uid'), 'household'),
+        'items',
+      );
+      expect(joinStoragePrefix(p, '123-abc.jpeg')).toBe('uid/household/items/123-abc.jpeg');
+    });
+  });
+
+  describe('storageObjectSize', () => {
+    it('reads the size out of metadata', () => {
+      expect(storageObjectSize({ name: 'x', id: '1', metadata: { size: 2048 } })).toBe(2048);
+    });
+
+    it('returns -1 when the size is unknown, so verification is skipped', () => {
+      expect(storageObjectSize({ name: 'x', id: '1' })).toBe(-1);
+      expect(storageObjectSize({ name: 'x', id: '1', metadata: {} })).toBe(-1);
+      expect(storageObjectSize({ name: 'x', id: '1', metadata: null })).toBe(-1);
+    });
+
+    it('returns -1 for a non-numeric size rather than NaN', () => {
+      expect(storageObjectSize({ name: 'x', id: '1', metadata: { size: 'big' } })).toBe(-1);
+    });
   });
 });

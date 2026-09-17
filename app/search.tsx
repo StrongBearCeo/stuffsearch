@@ -48,7 +48,13 @@ export default function SearchScreen() {
         <H1>{t('search.title')}</H1>
         <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
           <View style={{ flex: 1 }}>
-            <Input placeholder={t('search.placeholder')} value={q} onChangeText={setQ} />
+            <Input
+              placeholder={t('search.placeholder')}
+              value={q}
+              onChangeText={setQ}
+              clearable
+              clearLabel={t('search.clearSearch')}
+            />
           </View>
           <VoiceButton language={profile?.default_language ?? 'en'} onResult={setQ} />
         </View>

@@ -92,6 +92,41 @@ export function safeStoragePath(name: string): string {
   return parts.join('/');
 }
 
+/**
+ * One entry from the Storage REST API's `object/list` response.
+ *
+ * The endpoint returns a FLAT page of the current level: real objects carry an
+ * `id` and `metadata`, while "folders" (synthesised from the `/` separators in
+ * object names) come back with `id: null` and no metadata, and have to be
+ * recursed into. That's the only way to enumerate a bucket without the
+ * Management API's direct access to `storage.objects`.
+ */
+export interface StorageListEntry {
+  name: string;
+  id?: string | null;
+  metadata?: { size?: unknown } | null;
+}
+
+/** True when the entry is a synthetic folder to recurse into, not an object. */
+export function isStorageFolder(entry: StorageListEntry): boolean {
+  return entry.id == null;
+}
+
+/** Build a full object path from the prefix being listed and an entry name. */
+export function joinStoragePrefix(prefix: string, name: string): string {
+  if (!prefix) return name;
+  return `${prefix.replace(/\/+$/, '')}/${name}`;
+}
+
+/**
+ * Byte size recorded for an object, or -1 when unknown. -1 tells the caller to
+ * skip its size check rather than compare against NaN and fail every download.
+ */
+export function storageObjectSize(entry: StorageListEntry): number {
+  const size = entry.metadata?.size;
+  return typeof size === 'number' && Number.isFinite(size) ? size : -1;
+}
+
 /** Public URL for a storage object, URL-encoding each path segment (keeps `/`
  * separators intact). Only valid for objects in public buckets. */
 export function publicStorageObjectUrl(

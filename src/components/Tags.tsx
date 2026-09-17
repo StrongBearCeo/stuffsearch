@@ -3,11 +3,11 @@
  * list screens. All tag normalization lives in `src/lib/tags.ts` — these
  * components only render and delegate.
  */
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Muted } from './primitives';
-import { addTag, removeTag, type TagCount } from '../lib/tags';
+import { addTag, removeTag, filterTagCounts, type TagCount } from '../lib/tags';
 import { colors, radius, spacing, tint } from '../theme';
 
 /** A single tag chip. Selected chips invert to the primary colour. */
@@ -105,7 +105,14 @@ export function TagInput({
     setDraft('');
   }
 
-  const unused = suggestions.filter((s) => !tags.includes(s)).slice(0, 8);
+  // Typing narrows the suggestions, so a household with forty tags is still
+  // navigable — the draft box doubles as the tag search.
+  const unused = useMemo(() => {
+    const q = draft.trim().toLowerCase();
+    const available = suggestions.filter((s) => !tags.includes(s));
+    const matching = q ? available.filter((s) => s.toLowerCase().includes(q)) : available;
+    return matching.slice(0, 12);
+  }, [suggestions, tags, draft]);
 
   return (
     <View style={{ gap: spacing.sm }}>
@@ -178,8 +185,19 @@ export function TagInput({
 }
 
 /**
+ * Once a household passes this many tags the chip bar is an unscannable
+ * horizontal scroll, so it grows its own search box.
+ */
+const SEARCHABLE_FROM = 8;
+
+/**
  * Horizontal filter bar for the list screens. Tapping a tag toggles it;
  * selected tags combine with AND (see `matchesTags`).
+ *
+ * With a long tag list a search box appears above the chips. A selected tag
+ * always stays visible even when it doesn't match the search — hiding a filter
+ * that is still narrowing the list is how you end up staring at three results
+ * wondering why.
  */
 export function TagFilterBar({
   tags,
@@ -193,29 +211,97 @@ export function TagFilterBar({
   onClear: () => void;
 }) {
   const { t } = useTranslation();
+  const [query, setQuery] = useState('');
+  const searchable = tags.length >= SEARCHABLE_FROM;
+  const visible = useMemo(
+    () => (searchable ? filterTagCounts(tags, query, selected) : tags),
+    [searchable, tags, query, selected],
+  );
+
   if (tags.length === 0) return null;
+
   return (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={{ gap: spacing.sm, alignItems: 'center', paddingRight: spacing.lg }}
-    >
-      {selected.length > 0 ? (
-        <TouchableOpacity onPress={onClear} accessibilityRole="button" accessibilityLabel={t('tags.clear')}>
-          <Text style={{ color: colors.primary, fontSize: 13, paddingHorizontal: 4 }}>
-            {t('tags.clear')}
-          </Text>
-        </TouchableOpacity>
+    <View style={{ gap: spacing.sm }}>
+      {searchable ? (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+          <View style={{ flex: 1, position: 'relative', justifyContent: 'center' }}>
+            <TextInput
+              value={query}
+              onChangeText={setQuery}
+              placeholder={t('tags.searchPlaceholder')}
+              placeholderTextColor={colors.textMuted}
+              autoCapitalize="none"
+              autoCorrect={false}
+              accessibilityLabel={t('tags.searchPlaceholder')}
+              style={{
+                backgroundColor: colors.surfaceAlt,
+                color: colors.text,
+                borderRadius: radius.md,
+                paddingHorizontal: 12,
+                paddingRight: 34,
+                paddingVertical: 6,
+                fontSize: 13,
+                borderWidth: 1,
+                borderColor: colors.border,
+              }}
+            />
+            {query.length > 0 ? (
+              <TouchableOpacity
+                onPress={() => setQuery('')}
+                accessibilityRole="button"
+                accessibilityLabel={t('common.clear')}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                style={{
+                  position: 'absolute',
+                  right: 8,
+                  width: 20,
+                  height: 20,
+                  borderRadius: 10,
+                  backgroundColor: colors.border,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Text style={{ color: colors.text, fontSize: 11, fontWeight: '700' }}>✕</Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
+          {selected.length > 0 ? (
+            <TouchableOpacity
+              onPress={onClear}
+              accessibilityRole="button"
+              accessibilityLabel={t('tags.clear')}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Text style={{ color: colors.primary, fontSize: 13 }}>{t('tags.clear')}</Text>
+            </TouchableOpacity>
+          ) : null}
+        </View>
       ) : null}
-      {tags.map(({ tag, count }) => (
-        <TagChip
-          key={tag}
-          tag={tag}
-          count={count}
-          selected={selected.includes(tag)}
-          onPress={() => onToggle(tag)}
-        />
-      ))}
-    </ScrollView>
+
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ gap: spacing.sm, alignItems: 'center', paddingRight: spacing.lg }}
+      >
+        {!searchable && selected.length > 0 ? (
+          <TouchableOpacity onPress={onClear} accessibilityRole="button" accessibilityLabel={t('tags.clear')}>
+            <Text style={{ color: colors.primary, fontSize: 13, paddingHorizontal: 4 }}>
+              {t('tags.clear')}
+            </Text>
+          </TouchableOpacity>
+        ) : null}
+        {visible.map(({ tag, count }) => (
+          <TagChip
+            key={tag}
+            tag={tag}
+            count={count}
+            selected={selected.includes(tag)}
+            onPress={() => onToggle(tag)}
+          />
+        ))}
+        {visible.length === 0 ? <Muted style={{ fontSize: 12 }}>{t('tags.noMatch')}</Muted> : null}
+      </ScrollView>
+    </View>
   );
 }

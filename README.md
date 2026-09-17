@@ -48,9 +48,13 @@ Migrations live in `supabase/migrations/` and are applied to the live project vi
 | `0006_convert_item_to_place.sql` | `convert_item_to_place()` atomic RPC |
 | `0007_tags_value_links_search.sql` | `tags` on items + places, `estimated_value`/`value_currency`/`value_source`, `product_links[]`, and the `fts_search()` token-relevance RPC |
 | `0008_function_grants.sql` | revoke EXECUTE from PUBLIC (not just `anon` — `anon` inherits PUBLIC's default grant) on `fts_search` and `convert_item_to_place`; enable RLS on the `edge_ai_errors` diagnostics table |
+| `0009_rpc_auth_hardening.sql` | stop `resolve_code` trusting a caller-supplied user id |
+| `0010_places_as_items_placements_photos.sql` | `items.quantity`; `item_placements` (one item in several places); `places.photo_urls[]`; `places.item_id` (a place that IS an item) + the `sync_place_from_item` trigger and `place_would_cycle` guard; `external_codes` garbage-collection triggers; non-destructive `convert_item_to_place()` |
 
 ### Key design rules
 - **Household-scoped everything.** All rows carry `household_id`; RLS enforces membership.
+- **A thing can be both an item and a place.** A labelled toolbox is worth money *and* holds things. `places.item_id` links a place to the item it is the storage facet of; *Convert to place* adds that facet and keeps the item whole (value, links, category, codes, history), rather than the old behaviour of copying four fields onto a new place and deleting the item. The item is the single source of truth — a trigger mirrors its name/description/tags/photos/location onto the facet. When creating a place you choose up front: *just a place* or *also an item*.
+- **An item can be in several places, with counts.** Ten pencils are **one** item with `quantity = 10`, split across locations: `items.current_place_id` is the primary one, and each extra is an `item_placements` row with its own count. A place lists both.
 - **Codes are optional and plural.** A new item or place is created with **no code at all**. From its own screen you can *Generate app code* (a random deep-linkable `qr_token`) and/or *Scan to add a code* — as many external codes as you like, in any symbology. Nothing requires a code to exist.
 - **Two identifier types:** app-generated `qr_token` (random, deep-linkable) AND/OR `external_codes` rows (any symbology, raw payload, `UNIQUE` per household).
 - **`resolveScan(payload)`** routes deep-links and raw codes across all the user's households.
@@ -80,9 +84,10 @@ All deployed with `verify_jwt = true` (caller must be signed in):
 ## Tags, value, links, photos
 
 - **Tags** (`items.tags`, `places.tags` — `text[]` + GIN) are free-form lowercase labels: `return`, `fragile`, `winter`. Tap a chip on the Items or Places tab to filter (multiple chips = AND). Normalization lives in `src/lib/tags.ts`; the form offers tags already used in the household as one-tap suggestions.
-- **Value.** Each item can carry an `estimated_value` + `value_currency`. ✨ *Identify from photo* asks the model for one; you can overwrite it, which flips `value_source` to `manual` and permanently protects it from later enrichment. The Items tab totals the visible items per currency (`src/lib/value.ts`), and a place shows the total value of its contents.
+- **Value.** Each item can carry an `estimated_value` + `value_currency`. ✨ *Enrich with AI* asks the model for one; you can overwrite it, which flips `value_source` to `manual` and protects it from whole-form enrichment. Tapping ✨ on the **value field itself** is an explicit request for a fresh estimate and does replace it — that's how an existing item gets re-valued, from its own detail screen, at any time. The Items tab totals the visible items per currency (`src/lib/value.ts`), and a place shows the total value of its contents.
+- **AI enrichment.** ✨ *Enrich with AI* fills the whole form; the small ✨ beside each field rewrites just that field. Both send the photos **and** the name, description, category, tags and barcode — which is why the button is no longer called "identify from photo". A free-text box above it ("it's the 18V model, not 20V") is passed to the model as an instruction that outranks its own reading of the images. Places get the same treatment, with the model told it's describing a storage location rather than a product.
 - **Links.** An item holds a *list* of product links (`product_links text[]`, with `product_link` mirrored as the first entry for older clients). Enrichment appends, never replaces (`src/lib/enrich.ts`). Long URLs wrap over multiple lines rather than being truncated.
-- **Photos.** Tap any item or place photo to open the full-screen viewer — pinch, double-tap or drag to zoom, swipe between an item's photos.
+- **Photos.** Items **and places** hold a list of photos (`photo_urls text[]`; a place's legacy `photo_url` is mirrored from element 0). The first photo is the cover shown on cards, and ‹ › on each thumbnail reorders the list. Tap any photo to open the full-screen viewer — pinch, double-tap or drag to zoom, swipe between photos.
 
 ## Search relevance
 
@@ -167,7 +172,7 @@ src/
   theme/             # color tokens, spacing, breakpoints
   locales/           # en.json, vi.json
 supabase/
-  migrations/        # 0001–0004
+  migrations/        # 0001–0010 (+ 0010_rollback.sql, run by hand)
   functions/         # enrich-item, product-lookup, semantic-search, ask-llm (+ _shared/cors.ts)
 ```
 

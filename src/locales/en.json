@@ -18,7 +18,8 @@
     "confirm": "Confirm",
     "yes": "Yes",
     "no": "No",
-    "optional": "optional"
+    "optional": "optional",
+    "clear": "Clear"
   },
   "photos": {
     "add": "Add photo",
@@ -30,7 +31,11 @@
     "cameraDenied": "Camera access was denied. Enable it in Settings to take a photo.",
     "libraryDenied": "Photo library access was denied. Enable it in Settings to pick a photo.",
     "viewFull": "View full photo",
-    "zoomHint": "Tap a photo to open it · pinch or double-tap to zoom"
+    "zoomHint": "Tap a photo to open it · pinch or double-tap to zoom",
+    "cover": "Cover",
+    "moveEarlier": "Move photo earlier",
+    "moveLater": "Move photo later",
+    "reorderHint": "Use ‹ › to reorder — the first photo is the cover."
   },
   "auth": {
     "welcome": "Welcome to StuffSearch",
@@ -98,7 +103,7 @@
     "searchPlaceholder": "Search items…",
     "empty": "No items yet",
     "emptyHint": "Scan or add one to begin.",
-    "enrich": "✨ Enrich",
+    "enrich": "✨ Enrich with AI",
     "scanSetLocation": "Scan to set location",
     "scanCode": "Scan code",
     "scannedCode": "Scanned code",
@@ -111,8 +116,8 @@
     "createAndAssign": "Create place & set location",
     "convertToPlace": "Convert to place",
     "convertTitle": "Convert to a place?",
-    "convertMessage": "This item becomes a place in the same location. Its name, description, tags, first photo, and codes are kept. Category, value, product links, and extra photos are discarded. The item itself is removed.",
-    "convertSuccess": "Converted to a place",
+    "convertMessage": "This item also becomes a place, so other things can be stored inside it. It stays an item — its name, description, tags, photos, category, value, links, codes and history are all kept.",
+    "convertSuccess": "It’s a place too now",
     "count": "{{count}} item",
     "count_plural": "{{count}} items",
     "totalValue": "Total",
@@ -126,9 +131,37 @@
     "tags": "Tags",
     "productLinks": "Product links",
     "openPlace": "Open place",
-    "enrichFromPhoto": "✨ Identify from photo",
     "enrichDroppedLinks": "{{count}} suggested link didn't load and was dropped",
-    "enrichDroppedLinks_plural": "{{count}} suggested links didn't load and were dropped"
+    "enrichDroppedLinks_plural": "{{count}} suggested links didn't load and were dropped",
+    "enrichHint": "Uses the photos, name, description, category, tags and barcode — plus your note above.",
+    "enrichInstruction": "Instructions for the AI",
+    "enrichInstructionPlaceholder": "Anything the AI should know? e.g. “it’s the 18V model, not 20V”",
+    "aiField": "Fill in {{field}} with AI",
+    "quantity": "Quantity",
+    "quantityHint": "How many you have. Ten pencils are one item with a quantity of 10.",
+    "hereCount": "{{count}} here",
+    "hereCount_plural": "{{count}} here",
+    "alsoStoredIn": "Also stored in",
+    "alsoStoredInHint": "The same thing can live in several places — add one to split the quantity.",
+    "addLocation": "Add place",
+    "overAssigned": "{{placed}} assigned across places, but the quantity is only {{total}}",
+    "recent": "Recent",
+    "storage": "Storage",
+    "storageHolds": "Holds {{count}} item",
+    "storageHolds_plural": "Holds {{count}} items",
+    "openStorage": "Open contents",
+    "valueTotal": "({{total}} in total)",
+    "valueEstimate": "Estimate the value with AI",
+    "valueNoEstimate": "The assistant couldn’t estimate a value for this.",
+    "scanSelf": "Something can’t be stored inside itself",
+    "select": "Select",
+    "selectedCount": "{{count}} selected",
+    "selectedCount_plural": "{{count}} selected",
+    "moveSelected": "Move to…",
+    "bulkMoveDone": "{{count}} item moved",
+    "bulkMoveDone_plural": "{{count}} items moved",
+    "bulkMoveFailed": "{{count}} item couldn’t be moved",
+    "bulkMoveFailed_plural": "{{count}} items couldn’t be moved"
   },
   "history": {
     "movedFromTo": "Moved from {{from}} to {{to}}",
@@ -170,7 +203,24 @@
     "scanCycle": "Can't move it in — it already contains this place",
     "count": "{{count}} place",
     "count_plural": "{{count}} places",
-    "tags": "Tags"
+    "tags": "Tags",
+    "kind": "What kind of place?",
+    "kindStorage": "Just a place",
+    "kindStorageHint": "A room, shelf or drawer",
+    "kindItem": "Also an item",
+    "kindItemHint": "A box or case worth tracking",
+    "isAlsoItem": "Also an item",
+    "isAlsoItemHint": "This place is a thing in its own right — open the item to set its value, links and codes.",
+    "isAlsoItemEditHint": "Saving here updates the item this place is.",
+    "openItem": "Open the item",
+    "enrich": "✨ Enrich with AI",
+    "enrichHint": "Uses the photos, name and description — plus your note above.",
+    "enrichInstructionPlaceholder": "Anything the AI should know? e.g. “the shelf by the garage door”",
+    "viewList": "List",
+    "viewTree": "Tree",
+    "treeFiltered": "tree hidden while filtering",
+    "expand": "Expand",
+    "collapse": "Collapse"
   },
   "scan": {
     "title": "Scan",
@@ -181,7 +231,8 @@
     "torch": "Torch",
     "manualEntry": "Enter code manually",
     "enterCode": "Enter code",
-    "unknownHint": "Unknown code — open the Scan tab to create it"
+    "unknownHint": "Unknown code — open the Scan tab to create it",
+    "unreadable": "Couldn’t read that code — try again, or enter it by hand."
   },
   "scanResolve": {
     "opening": "Opening…",
@@ -211,7 +262,8 @@
     "askError": "Couldn't get an answer. Try again in a moment.",
     "results": "Results",
     "noResults": "No results",
-    "related": "Related match"
+    "related": "Related match",
+    "clearSearch": "Clear search"
   },
   "codes": {
     "title": "Bound codes",
@@ -228,7 +280,10 @@
     "appCode": "That's a StuffSearch code — it already opens its own item or place.",
     "added": "Code added",
     "noneHint": "No code yet. Generate one, or scan a printed label to attach it.",
-    "optionalHint": "Optional — you can add or generate a code later."
+    "optionalHint": "Optional — you can add or generate a code later.",
+    "remove": "Remove code",
+    "removeTitle": "Remove this code?",
+    "removeMessage": "Any label already printed with this QR will stop opening it. You can generate a new code later."
   },
   "settings": {
     "title": "Settings",
@@ -245,7 +300,8 @@
     "generic": "Something went wrong.",
     "network": "Network error. Check your connection.",
     "notFound": "Not found.",
-    "permission": "You don't have permission to do that."
+    "permission": "You don't have permission to do that.",
+    "unstorableText": "Some text here contains characters that can’t be saved. Re-scan the code, or retype the affected field."
   },
   "print": {
     "title": "Print codes",
@@ -294,12 +350,25 @@
     "remove": "Remove tag",
     "placeholder": "Add a tag, e.g. return",
     "suggestions": "Used before",
-    "clear": "Clear"
+    "clear": "Clear",
+    "searchPlaceholder": "Search tags…",
+    "noMatch": "No matching tags"
   },
   "links": {
     "add": "Add",
     "remove": "Remove",
     "count": "{{count}} link",
     "count_plural": "{{count}} links"
+  },
+  "home": {
+    "recent": "Recently updated",
+    "viewAll": "View all",
+    "viewAllCount": "+{{count}} more item",
+    "viewAllCount_plural": "+{{count}} more items",
+    "unitsHint": "{{count}} unit",
+    "unitsHint_plural": "{{count}} units",
+    "unplaced": "{{count}} not in a place",
+    "unplaced_plural": "{{count}} not in a place",
+    "browseByTag": "Browse by tag"
   }
 }

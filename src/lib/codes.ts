@@ -5,6 +5,7 @@
  */
 import { supabase, type ExternalCode, type ExternalCodeType, type ExternalEntityType } from './supabase';
 import { isProductBarcode } from './constants';
+import { sanitizeScanPayload, isUsableScanPayload } from './scanPayload';
 
 export interface ProductInfo {
   name?: string;
@@ -24,11 +25,18 @@ export async function bindExternalCode(params: {
   label?: string;
   boundBy: string;
 }): Promise<ExternalCode> {
+  // Last line of defence before the insert. A raw payload containing a NUL is
+  // JSON-encoded by supabase-js and rejected by Postgres while it parses the
+  // body (22P05), which fails the surrounding save entirely.
+  const codeValue = sanitizeScanPayload(params.codeValue);
+  if (!isUsableScanPayload(codeValue)) {
+    throw new Error('That code could not be read.');
+  }
   const { data, error } = await supabase
     .from('external_codes')
     .insert({
       household_id: params.householdId,
-      code_value: params.codeValue,
+      code_value: codeValue,
       code_type: params.codeType,
       entity_type: params.entityType,
       entity_id: params.entityId,

@@ -18,7 +18,8 @@
     "confirm": "Xác nhận",
     "yes": "Có",
     "no": "Không",
-    "optional": "tuỳ chọn"
+    "optional": "tuỳ chọn",
+    "clear": "Xoá"
   },
   "photos": {
     "add": "Thêm ảnh",
@@ -30,7 +31,11 @@
     "cameraDenied": "Đã từ chối truy cập máy ảnh. Bật trong Cài đặt để chụp ảnh.",
     "libraryDenied": "Đã từ chối truy cập thư viện ảnh. Bật trong Cài đặt để chọn ảnh.",
     "viewFull": "Xem ảnh đầy đủ",
-    "zoomHint": "Chạm vào ảnh để mở · chụm hoặc chạm hai lần để phóng to"
+    "zoomHint": "Chạm vào ảnh để mở · chụm hoặc chạm hai lần để phóng to",
+    "cover": "Ảnh bìa",
+    "moveEarlier": "Chuyển ảnh lên trước",
+    "moveLater": "Chuyển ảnh xuống sau",
+    "reorderHint": "Dùng ‹ › để sắp xếp — ảnh đầu tiên là ảnh bìa."
   },
   "auth": {
     "welcome": "Chào mừng đến StuffSearch",
@@ -98,7 +103,7 @@
     "searchPlaceholder": "Tìm đồ vật…",
     "empty": "Chưa có đồ vật nào",
     "emptyHint": "Quét hoặc thêm để bắt đầu.",
-    "enrich": "✨ Bổ sung",
+    "enrich": "✨ Bổ sung bằng AI",
     "scanSetLocation": "Quét để đặt vị trí",
     "scanCode": "Quét mã",
     "scannedCode": "Mã đã quét",
@@ -111,8 +116,8 @@
     "createAndAssign": "Tạo nơi chứa & đặt vị trí",
     "convertToPlace": "Chuyển thành nơi chứa",
     "convertTitle": "Chuyển thành nơi chứa?",
-    "convertMessage": "Món đồ này sẽ trở thành một nơi chứa ở cùng vị trí. Tên, mô tả, thẻ, ảnh đầu tiên và các mã sẽ được giữ lại. Danh mục, giá trị, liên kết sản phẩm và các ảnh còn lại sẽ bị bỏ. Món đồ sẽ bị xoá.",
-    "convertSuccess": "Đã chuyển thành nơi chứa",
+    "convertMessage": "Món đồ này cũng trở thành một nơi chứa, để có thể cất thứ khác vào trong. Nó vẫn là món đồ — tên, mô tả, thẻ, ảnh, danh mục, giá trị, liên kết, mã và lịch sử đều được giữ nguyên.",
+    "convertSuccess": "Giờ nó cũng là một nơi chứa",
     "count": "{{count}} món đồ",
     "count_plural": "{{count}} món đồ",
     "totalValue": "Tổng",
@@ -126,9 +131,37 @@
     "tags": "Thẻ",
     "productLinks": "Liên kết sản phẩm",
     "openPlace": "Mở nơi chứa",
-    "enrichFromPhoto": "✨ Nhận diện từ ảnh",
     "enrichDroppedLinks": "{{count}} liên kết gợi ý không mở được nên đã bị bỏ",
-    "enrichDroppedLinks_plural": "{{count}} liên kết gợi ý không mở được nên đã bị bỏ"
+    "enrichDroppedLinks_plural": "{{count}} liên kết gợi ý không mở được nên đã bị bỏ",
+    "enrichHint": "Dùng ảnh, tên, mô tả, danh mục, thẻ và mã vạch — cùng ghi chú ở trên.",
+    "enrichInstruction": "Hướng dẫn cho AI",
+    "enrichInstructionPlaceholder": "AI cần biết thêm gì không? ví dụ “đây là bản 18V, không phải 20V”",
+    "aiField": "Dùng AI điền {{field}}",
+    "quantity": "Số lượng",
+    "quantityHint": "Bạn có bao nhiêu cái. Mười cây bút là một món đồ với số lượng 10.",
+    "hereCount": "{{count}} ở đây",
+    "hereCount_plural": "{{count}} ở đây",
+    "alsoStoredIn": "Còn để ở",
+    "alsoStoredInHint": "Cùng một món có thể để ở nhiều nơi — thêm nơi để chia số lượng.",
+    "addLocation": "Thêm nơi chứa",
+    "overAssigned": "Đã phân bổ {{placed}} trong khi số lượng chỉ có {{total}}",
+    "recent": "Gần đây",
+    "storage": "Chỗ chứa",
+    "storageHolds": "Đang chứa {{count}} món đồ",
+    "storageHolds_plural": "Đang chứa {{count}} món đồ",
+    "openStorage": "Xem bên trong",
+    "valueTotal": "(tổng {{total}})",
+    "valueEstimate": "Dùng AI ước tính giá trị",
+    "valueNoEstimate": "Trợ lý không ước tính được giá trị cho món này.",
+    "scanSelf": "Không thể cất một thứ vào trong chính nó",
+    "select": "Chọn",
+    "selectedCount": "Đã chọn {{count}}",
+    "selectedCount_plural": "Đã chọn {{count}}",
+    "moveSelected": "Chuyển đến…",
+    "bulkMoveDone": "Đã chuyển {{count}} món đồ",
+    "bulkMoveDone_plural": "Đã chuyển {{count}} món đồ",
+    "bulkMoveFailed": "Không chuyển được {{count}} món đồ",
+    "bulkMoveFailed_plural": "Không chuyển được {{count}} món đồ"
   },
   "history": {
     "movedFromTo": "Đã chuyển từ {{from}} sang {{to}}",
@@ -170,7 +203,24 @@
     "scanCycle": "Không thể chuyển — nơi này đã chứa nơi hiện tại",
     "count": "{{count}} nơi chứa",
     "count_plural": "{{count}} nơi chứa",
-    "tags": "Thẻ"
+    "tags": "Thẻ",
+    "kind": "Đây là loại nơi chứa nào?",
+    "kindStorage": "Chỉ là nơi chứa",
+    "kindStorageHint": "Phòng, kệ hoặc ngăn kéo",
+    "kindItem": "Cũng là món đồ",
+    "kindItemHint": "Hộp hoặc vali đáng theo dõi",
+    "isAlsoItem": "Cũng là món đồ",
+    "isAlsoItemHint": "Nơi này bản thân cũng là một món đồ — mở món đồ để đặt giá trị, liên kết và mã.",
+    "isAlsoItemEditHint": "Lưu ở đây sẽ cập nhật món đồ tương ứng.",
+    "openItem": "Mở món đồ",
+    "enrich": "✨ Bổ sung bằng AI",
+    "enrichHint": "Dùng ảnh, tên và mô tả — cùng ghi chú ở trên.",
+    "enrichInstructionPlaceholder": "AI cần biết thêm gì không? ví dụ “cái kệ cạnh cửa gara”",
+    "viewList": "Danh sách",
+    "viewTree": "Cây",
+    "treeFiltered": "ẩn dạng cây khi đang lọc",
+    "expand": "Mở rộng",
+    "collapse": "Thu gọn"
   },
   "scan": {
     "title": "Quét",
@@ -181,7 +231,8 @@
     "torch": "Đèn",
     "manualEntry": "Nhập mã thủ công",
     "enterCode": "Nhập mã",
-    "unknownHint": "Mã không rõ — mở tab Quét để tạo mới"
+    "unknownHint": "Mã không rõ — mở tab Quét để tạo mới",
+    "unreadable": "Không đọc được mã này — thử lại, hoặc nhập bằng tay."
   },
   "scanResolve": {
     "opening": "Đang mở…",
@@ -211,7 +262,8 @@
     "askError": "Không nhận được câu trả lời. Thử lại sau chút.",
     "results": "Kết quả",
     "noResults": "Không có kết quả",
-    "related": "Kết quả liên quan"
+    "related": "Kết quả liên quan",
+    "clearSearch": "Xoá ô tìm kiếm"
   },
   "codes": {
     "title": "Mã đã gán",
@@ -228,7 +280,10 @@
     "appCode": "Đây là mã StuffSearch — nó đã tự mở món đồ hoặc nơi chứa của nó.",
     "added": "Đã thêm mã",
     "noneHint": "Chưa có mã. Hãy tạo một mã, hoặc quét nhãn đã in để gắn vào.",
-    "optionalHint": "Không bắt buộc — bạn có thể thêm hoặc tạo mã sau."
+    "optionalHint": "Không bắt buộc — bạn có thể thêm hoặc tạo mã sau.",
+    "remove": "Xoá mã",
+    "removeTitle": "Xoá mã này?",
+    "removeMessage": "Mọi nhãn đã in bằng mã QR này sẽ không mở được nữa. Bạn có thể tạo mã mới sau."
   },
   "settings": {
     "title": "Cài đặt",
@@ -245,7 +300,8 @@
     "generic": "Đã có lỗi xảy ra.",
     "network": "Lỗi mạng. Kiểm tra kết nối.",
     "notFound": "Không tìm thấy.",
-    "permission": "Bạn không có quyền thực hiện việc đó."
+    "permission": "Bạn không có quyền thực hiện việc đó.",
+    "unstorableText": "Một số ký tự ở đây không thể lưu được. Hãy quét lại mã, hoặc nhập lại trường bị lỗi."
   },
   "print": {
     "title": "In mã",
@@ -294,12 +350,25 @@
     "remove": "Xoá thẻ",
     "placeholder": "Thêm thẻ, ví dụ trả lại",
     "suggestions": "Đã dùng trước đây",
-    "clear": "Xoá lọc"
+    "clear": "Xoá lọc",
+    "searchPlaceholder": "Tìm thẻ…",
+    "noMatch": "Không có thẻ phù hợp"
   },
   "links": {
     "add": "Thêm",
     "remove": "Xoá",
     "count": "{{count}} liên kết",
     "count_plural": "{{count}} liên kết"
+  },
+  "home": {
+    "recent": "Vừa cập nhật",
+    "viewAll": "Xem tất cả",
+    "viewAllCount": "Thêm {{count}} món đồ nữa",
+    "viewAllCount_plural": "Thêm {{count}} món đồ nữa",
+    "unitsHint": "{{count}} cái",
+    "unitsHint_plural": "{{count}} cái",
+    "unplaced": "{{count}} chưa có nơi chứa",
+    "unplaced_plural": "{{count}} chưa có nơi chứa",
+    "browseByTag": "Duyệt theo thẻ"
   }
 }

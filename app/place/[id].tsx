@@ -17,8 +17,10 @@ import { ItemCard } from '../../src/components/ItemCard';
 import { BoundCodesList } from '../../src/components/BoundCodesList';
 import { TagList } from '../../src/components/Tags';
 import { ScanCameraModal } from '../../src/components/ScanCameraModal';
-import { usePlace, usePlaceContents, usePlaceChildren, usePlaces, useDeletePlace, useUpdatePlace, useGeneratePlaceCode } from '../../src/hooks/usePlaces';
-import { useMoveItem } from '../../src/hooks/useItems';
+import { usePlace, usePlaceContents, usePlaceChildren, usePlaces, useDeletePlace, useUpdatePlace, useGeneratePlaceCode, useRemovePlaceCode } from '../../src/hooks/usePlaces';
+import { useMoveItem, useItem } from '../../src/hooks/useItems';
+import { usePlacementsForPlace } from '../../src/hooks/useItemPlacements';
+import { useRecentPlaces } from '../../src/hooks/useRecentPlaces';
 import { useScan } from '../../src/hooks/useScan';
 import { scannerTypeToCodeType } from '../../src/lib/constants';
 import { classifyScanForBinding } from '../../src/lib/bindCode';
@@ -29,6 +31,9 @@ import { appQrPayload } from '../../src/lib/qrcode';
 import { printAndShareCode } from '../../src/lib/print';
 import { wouldCreateCycle, indexPlaces } from '../../src/lib/places';
 import { summarizeValue, formatTotals } from '../../src/lib/value';
+import { placePhotos } from '../../src/lib/photos';
+import { quantityInPlace } from '../../src/lib/quantity';
+import { orderByRecent } from '../../src/lib/recent';
 import type { Item, Place } from '../../src/lib/supabase';
 import { colors, spacing, radius, tint } from '../../src/theme';
 import { useTranslation } from 'react-i18next';
@@ -52,9 +57,14 @@ export default function PlaceDetailScreen() {
   const { data: children } = usePlaceChildren(placeId);
   const { data: allPlaces } = usePlaces();
   const { data: codes } = useExternalCodes(activeHouseholdId, 'place', placeId);
+  const { data: placements } = usePlacementsForPlace(placeId);
+  // A place can BE an item (a labelled toolbox): show the thing behind it.
+  const { data: backingItem } = useItem(place?.item_id ?? undefined);
+  const { recent } = useRecentPlaces();
   const deletePlace = useDeletePlace();
   const updatePlace = useUpdatePlace();
   const generateCode = useGeneratePlaceCode();
+  const removeCode = useRemovePlaceCode();
   const moveItem = useMoveItem();
   const bind = useBindExternalCode();
   const unbind = useUnbindExternalCode('place', placeId ?? id);
@@ -64,7 +74,7 @@ export default function PlaceDetailScreen() {
   const [scanNotice, setScanNotice] = useState<string | null>(null);
   const [movePicker, setMovePicker] = useState(false);
   const [prompt, setPrompt] = useState<string | null>(null);
-  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerIndex, setViewerIndex] = useState<number | null>(null);
 
   if (isLoading) return <Screen><View style={{ padding: 16 }}><Muted>{t('common.loading')}</Muted></View></Screen>;
   if (error) return <Screen><View style={{ padding: 16 }}><ErrorBanner message={(error as Error).message} /></View></Screen>;
@@ -77,6 +87,8 @@ export default function PlaceDetailScreen() {
     : null;
   const contentSummary = summarizeValue(contents ?? []);
   const contentTotals = formatTotals(contentSummary.totals);
+  // Reads the array, falling back to the legacy scalar for old rows.
+  const photos = placePhotos(place);
 
   function openScanner(mode: Exclude<ScanMode, null>) {
     setScanNotice(null);
@@ -150,6 +162,21 @@ export default function PlaceDetailScreen() {
     } else {
       setScanNotice(t('places.scanNotAPlace'));
     }
+  }
+
+  /** Drop the app-generated QR. Printed labels stop resolving, so confirm. */
+  function onRemoveCode() {
+    Alert.alert(t('codes.removeTitle'), t('codes.removeMessage'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('codes.remove'),
+        style: 'destructive',
+        onPress: () => {
+          hapticWarning();
+          removeCode.mutate(place!.id);
+        },
+      },
+    ]);
   }
 
   function onUnbind(codeValue: string, codeId: string) {
@@ -292,21 +319,51 @@ export default function PlaceDetailScreen() {
     <Screen>
       <ScrollView contentContainerStyle={{ alignItems: 'center' }}>
         <MaxWidth style={{ padding: spacing.lg, gap: 12, paddingBottom: 40 }}>
-        {place.photo_url ? (
-          <TouchableOpacity
-            onPress={() => setViewerOpen(true)}
-            accessibilityRole="imagebutton"
-            accessibilityLabel={t('photos.viewFull')}
+        {/* Places carry several photos now, like items. */}
+        {photos.length > 0 ? (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ gap: spacing.sm, paddingBottom: 4 }}
           >
-            <ExpoImage uri={place.photo_url} style={{ width: '100%', height: 180, borderRadius: radius.mdLg }} />
-          </TouchableOpacity>
+            {photos.map((uri, i) => (
+              <TouchableOpacity
+                key={`${uri}-${i}`}
+                onPress={() => setViewerIndex(i)}
+                accessibilityRole="imagebutton"
+                accessibilityLabel={t('photos.viewFull')}
+              >
+                <ExpoImage
+                  uri={uri}
+                  style={{
+                    width: photos.length === 1 ? 320 : 220,
+                    height: 180,
+                    borderRadius: radius.mdLg,
+                  }}
+                />
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
         ) : null}
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <View style={{ flex: 1 }}>
+        {photos.length > 0 ? <Muted style={{ fontSize: 11 }}>{t('photos.zoomHint')}</Muted> : null}
+        <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm }}>
+          <View style={{ flex: 1, minWidth: 0 }}>
             <H2>{place.name}</H2>
           </View>
           <Button title={t('common.edit')} variant="ghost" onPress={() => router.push({ pathname: '/place/new', params: { id: place.id } } as never)} />
         </View>
+
+        {/* This place IS an item — link straight to the thing itself. */}
+        {backingItem ? (
+          <Card style={{ gap: spacing.sm }}>
+            <Muted style={{ fontSize: 11, textTransform: 'uppercase' }}>{t('places.isAlsoItem')}</Muted>
+            <Muted style={{ fontSize: 12 }}>{t('places.isAlsoItemHint')}</Muted>
+            <Button
+              title={t('places.openItem')}
+              onPress={() => router.push(`/item/${backingItem.id}` as never)}
+            />
+          </Card>
+        ) : null}
         {/* Description on its own row so a long one wraps instead of being
             squeezed (and clipped) next to the Edit button. */}
         {place.description ? <Body>{place.description}</Body> : null}
@@ -348,7 +405,11 @@ export default function PlaceDetailScreen() {
                 <View style={{ marginTop: 12, gap: 4 }}>
                   <Muted style={{ fontSize: 11, marginBottom: 4 }}>{t('places.moveTo')}</Muted>
                   <PlaceOption label={t('places.none')} onPress={() => onMoveParent(null)} selected={!place.parent_place_id} />
-                  {(allPlaces ?? []).filter((p) => p.id !== place.id).map((p: Place) => (
+                  {orderByRecent(
+                    (allPlaces ?? []).filter((p) => p.id !== place.id),
+                    recent,
+                    (p: Place) => p.id,
+                  ).map((p: Place) => (
                     <PlaceOption key={p.id} label={p.name} onPress={() => onMoveParent(p.id)} selected={p.id === place.parent_place_id} />
                   ))}
                 </View>
@@ -385,14 +446,19 @@ export default function PlaceDetailScreen() {
             {contentTotals ? ` · ${contentTotals}` : ''}
           </Body>
           {contents && contents.length > 0 ? (
-            contents.map((it: Item) => (
-              <ItemCard
-                key={it.id}
-                item={it}
-                placeName={place.name}
-                onPress={() => router.push(`/item/${it.id}`)}
-              />
-            ))
+            contents.map((it: Item) => {
+              // An item can be in several places at once; show how many of it
+              // are HERE rather than its household-wide total.
+              const here = quantityInPlace(it, placements ?? [], place.id);
+              return (
+                <ItemCard
+                  key={it.id}
+                  item={here == null ? it : { ...it, quantity: here }}
+                  placeName={place.name}
+                  onPress={() => router.push(`/item/${it.id}`)}
+                />
+              );
+            })
           ) : (
             <Card><Muted>{t('common.empty')}</Muted></Card>
           )}
@@ -427,7 +493,7 @@ export default function PlaceDetailScreen() {
               <QRCode value={placeQrPayload} size={180} backgroundColor="#fff" color={colors.bg} />
             </View>
             <Muted style={{ textAlign: 'center' }}>{t('places.qrHint')}</Muted>
-            <View style={{ flexDirection: 'row', gap: 8 }}>
+            <View style={{ flexDirection: 'row', gap: spacing.sm, flexWrap: 'wrap', justifyContent: 'center' }}>
               <Button
                 title={t('places.shareQr')}
                 variant="ghost"
@@ -444,6 +510,13 @@ export default function PlaceDetailScreen() {
                     Alert.alert(t('errors.generic'), e instanceof Error ? e.message : undefined);
                   }
                 }}
+              />
+              {/* A generated code used to be permanent. */}
+              <Button
+                title={t('codes.remove')}
+                variant="ghost"
+                loading={removeCode.isPending}
+                onPress={onRemoveCode}
               />
             </View>
           </Card>
@@ -463,6 +536,7 @@ export default function PlaceDetailScreen() {
         notice={scanNotice}
         onDismissNotice={() => setScanNotice(null)}
         busy={resolving || bind.isPending}
+        onUnreadable={() => setScanNotice(t('scan.unreadable'))}
         onClose={closeScanner}
         onScan={(payload, rawType) => {
           if (scanMode) scanHandlers[scanMode](payload, rawType);
@@ -470,10 +544,11 @@ export default function PlaceDetailScreen() {
       />
 
       <PhotoViewer
-        visible={viewerOpen}
-        photos={place.photo_url ? [place.photo_url] : []}
+        visible={viewerIndex !== null}
+        photos={photos}
+        initialIndex={viewerIndex ?? 0}
         closeLabel={t('common.back')}
-        onClose={() => setViewerOpen(false)}
+        onClose={() => setViewerIndex(null)}
       />
     </Screen>
   );

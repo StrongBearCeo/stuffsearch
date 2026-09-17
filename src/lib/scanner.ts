@@ -9,6 +9,7 @@
  */
 import { supabase } from './supabase';
 import { APP_SCHEME } from './constants';
+import { sanitizeScanPayload } from './scanPayload';
 
 /** A parsed StuffSearch deep-link. */
 export interface DeepLinkTarget {
@@ -65,10 +66,14 @@ export type ScanOutcome =
  * @param activeHouseholdId the currently active household (null if none)
  */
 export async function resolveScan(
-  payload: string,
+  rawPayload: string,
   userId: string,
   activeHouseholdId: string | null,
 ): Promise<ScanOutcome> {
+  // Sanitising is idempotent, so doing it here as well as at the camera costs
+  // nothing and covers manual entry — and guarantees the value we look up is
+  // byte-identical to the value binding would store.
+  const payload = sanitizeScanPayload(rawPayload);
   const dl = parseDeepLink(payload);
   if (dl) return { type: 'deep-link', target: dl };
 

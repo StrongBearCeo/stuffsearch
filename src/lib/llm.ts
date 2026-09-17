@@ -52,9 +52,29 @@ export interface EnrichItemRequest {
   category?: string;
   photoUrls?: string[];
   existingLinks?: string[];
+  existingTags?: string[];
   barcode?: string;
   barcodeType?: string;
   language?: 'en' | 'vi';
+  /**
+   * A free-text follow-up from the user — "it's the 18V model, not 20V",
+   * "describe the condition", "this is for storing camping gear". Passed to
+   * the model verbatim as the highest-priority instruction, so a wrong guess
+   * can be corrected without retyping every field by hand.
+   */
+  instruction?: string;
+  /**
+   * Restrict the answer to one field, for the per-field ✨ buttons. The model
+   * still SEES everything (a good description needs the photos and the name);
+   * it's the answer that narrows.
+   */
+  field?: 'name' | 'description' | 'category' | 'tags' | 'links' | 'value';
+  /**
+   * What is being enriched. Places take the same treatment as items — a photo
+   * of a shelf can name it and suggest tags — but the model is told to
+   * describe a STORAGE LOCATION rather than a product to buy.
+   */
+  entity?: 'item' | 'place';
 }
 export interface EnrichItemResponse {
   name?: string;

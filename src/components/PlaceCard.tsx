@@ -36,8 +36,11 @@ export function PlaceCard({
           uri={place.photo_url}
           style={{ width: 48, height: 48, borderRadius: 8, backgroundColor: colors.surfaceAlt }}
         />
-        <View style={{ flex: 1, gap: 2 }}>
-          <Body style={{ fontWeight: '600' }}>{place.name}</Body>
+        {/* minWidth:0 — see ItemCard: without it the name column cannot
+            shrink and a long parent-place badge wraps the title one character
+            per line. */}
+        <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+          <Body style={{ fontWeight: '600' }} numberOfLines={2}>{place.name}</Body>
           {/* Two lines, not one: a one-line clamp cut most descriptions mid-word. */}
           {place.description ? <Muted numberOfLines={2}>{place.description}</Muted> : null}
           {place.tags && place.tags.length > 0 ? (
@@ -63,10 +66,10 @@ export function PlaceCard({
             </View>
           ) : null}
         </View>
-        <View style={{ alignItems: 'flex-end', flexShrink: 1, gap: 2 }}>
+        <View style={{ alignItems: 'flex-end', flexShrink: 0, maxWidth: '38%', gap: 2 }}>
           {located ? (
             <View style={{ backgroundColor: tint(colors.success), paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 }}>
-              <Text style={{ color: colors.success, fontSize: 11, fontWeight: '600' }} numberOfLines={1}>
+              <Text style={{ color: colors.success, fontSize: 11, fontWeight: '600' }} numberOfLines={2}>
                 {locationLabel}
               </Text>
             </View>

@@ -1,9 +1,12 @@
 /** Create or edit an item. Supports a prefilled external code (from scan) and
- * optional LLM enrichment. When `id` param is present, edits that item. */
-import React, { useEffect, useMemo, useState } from 'react';
+ * optional LLM enrichment — whole-form, or one field at a time. When `id` param
+ * is present, edits that item. */
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Text, View, Alert, Linking } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { FormScreen, H1, Input, Muted, Card, Button, ErrorBanner } from '../../src/components/primitives';
+import {
+  FormScreen, H1, Input, Muted, Card, Button, ErrorBanner, Field, AiButton,
+} from '../../src/components/primitives';
 import { BarcodeImage } from '../../src/components/BarcodeImage';
 import { PhotoInput } from '../../src/components/PhotoInput';
 import { LinksCard } from '../../src/components/LinksCard';
@@ -14,12 +17,16 @@ import { usePhotoPicker, type PhotoSource } from '../../src/hooks/usePhotoPicker
 import { useBindExternalCode } from '../../src/hooks/useExternalCode';
 import { useHousehold } from '../../src/lib/household';
 import { useAuth } from '../../src/lib/auth';
-import { errorMessage } from '../../src/lib/errors';
+import { errorMessage, isDuplicateCodeError, isUnstorableTextError } from '../../src/lib/errors';
 import { enrichItem } from '../../src/lib/llm';
-import { applyEnrichment } from '../../src/lib/enrich';
+import { applyEnrichment, applyFieldEnrichment, type EnrichableField } from '../../src/lib/enrich';
 import { itemLinks, linkColumns, mergeLinks, normalizeLink } from '../../src/lib/links';
 import { collectTags } from '../../src/lib/tags';
+import { addPhotos, movePhoto, removePhotoAt } from '../../src/lib/photos';
+import { parseQuantity, itemQuantity } from '../../src/lib/quantity';
 import { parseValueInput, DEFAULT_CURRENCY } from '../../src/lib/value';
+import { createSubmitGuard } from '../../src/lib/submit';
+import { newUuid } from '../../src/lib/ids';
 import { scannerTypeToCodeType } from '../../src/lib/constants';
 import { spacing } from '../../src/theme';
 import { useTranslation } from 'react-i18next';
@@ -55,6 +62,7 @@ export default function NewItemScreen() {
   const [links, setLinks] = useState<string[]>([]);
   const [linkDraft, setLinkDraft] = useState('');
   const [tags, setTags] = useState<string[]>([]);
+  const [quantity, setQuantity] = useState('1');
   const [value, setValue] = useState('');
   const [valueCurrency, setValueCurrency] = useState<string>(DEFAULT_CURRENCY);
   const [valueSource, setValueSource] = useState<'ai' | 'manual' | null>(null);
@@ -64,8 +72,22 @@ export default function NewItemScreen() {
   const [scannedCode, setScannedCode] = useState<{ value: string; type: ExternalCodeType } | null>(null);
   const [scanOpen, setScanOpen] = useState(false);
   const [enriching, setEnriching] = useState(false);
+  /** Which single field the ✨ is currently working on, if any. */
+  const [enrichingField, setEnrichingField] = useState<EnrichableField | null>(null);
+  const [instruction, setInstruction] = useState('');
   const [enrichNote, setEnrichNote] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  /**
+   * Duplicate-save protection, two layers:
+   *   - `guard` drops a second tap landing in the same frame, before
+   *     `createItem.isPending` has had a chance to re-render the button;
+   *   - `draftId` is the row's primary key, chosen here and reused across
+   *     retries, so even a request that silently succeeded and then timed out
+   *     can't produce a second item.
+   */
+  const guard = useRef(createSubmitGuard()).current;
+  const draftId = useRef<string>(newUuid()).current;
 
   /** Capture a code scanned from within the form. We store the raw value (no
    *  resolution/bind here) and bind it on save, mirroring the params.code flow. */
@@ -92,6 +114,7 @@ export default function NewItemScreen() {
       setCategory(existing.category ?? '');
       setLinks(itemLinks(existing));
       setTags(existing.tags ?? []);
+      setQuantity(String(itemQuantity(existing.quantity)));
       setValue(existing.estimated_value != null ? String(existing.estimated_value) : '');
       setValueCurrency(existing.value_currency ?? DEFAULT_CURRENCY);
       setValueSource((existing.value_source as 'ai' | 'manual' | null) ?? null);
@@ -116,7 +139,7 @@ export default function NewItemScreen() {
   async function runPicker(source: PhotoSource) {
     const urls = await pickAndUpload(source);
     if (urls && urls.length > 0) {
-      setPhotos((prev) => [...prev, ...urls]);
+      setPhotos((prev) => addPhotos(prev, urls));
     }
   }
 
@@ -139,57 +162,88 @@ export default function NewItemScreen() {
   async function onSave() {
     if (!name.trim()) return;
     setError(null);
-    try {
-      const parsedValue = parseValueInput(value);
-      const payload = {
-        name: name.trim(),
-        description: description.trim() || null,
-        category: category.trim() || null,
-        ...linkColumns(mergeLinks(links, linkDraft ? [linkDraft] : [])),
-        tags,
-        photo_urls: photos,
-        estimated_value: parsedValue,
-        value_currency: parsedValue == null ? null : valueCurrency,
-        value_source: parsedValue == null ? null : valueSource ?? 'manual',
-        value_updated_at: parsedValue == null ? null : new Date().toISOString(),
-      };
-      let itemId: string;
-      if (editing && params.id) {
-        const updated = await updateItem.mutateAsync({ id: params.id, patch: payload });
-        itemId = updated.id;
-      } else {
-        // If invoked from a place's "scan to add", create the item already
-        // located inside that place (useCreateItem writes a "created here"
-        // history row when current_place_id is set).
-        const created = await createItem.mutateAsync({
-          ...payload,
-          ...(params.placeId ? { current_place_id: params.placeId } : {}),
-        });
-        itemId = created.id;
-        // If a code came from the scan flow or was scanned in-form, bind it.
-        if (codeValue && activeHouseholdId && user) {
-          await bind.mutateAsync({
-            householdId: activeHouseholdId,
-            codeValue,
-            codeType: scannerTypeToCodeType(codeType === 'other' ? 'other' : codeType),
-            entityType: 'item',
-            entityId: itemId,
-            boundBy: user.id,
+    await guard.run(async () => {
+      try {
+        const parsedValue = parseValueInput(value);
+        const payload = {
+          name: name.trim(),
+          description: description.trim() || null,
+          category: category.trim() || null,
+          ...linkColumns(mergeLinks(links, linkDraft ? [linkDraft] : [])),
+          tags,
+          quantity: parseQuantity(quantity) ?? 1,
+          photo_urls: photos,
+          estimated_value: parsedValue,
+          value_currency: parsedValue == null ? null : valueCurrency,
+          value_source: parsedValue == null ? null : valueSource ?? 'manual',
+          value_updated_at: parsedValue == null ? null : new Date().toISOString(),
+        };
+        let itemId: string;
+        if (editing && params.id) {
+          const updated = await updateItem.mutateAsync({ id: params.id, patch: payload });
+          itemId = updated.id;
+        } else {
+          // If invoked from a place's "scan to add", create the item already
+          // located inside that place (useCreateItem writes a "created here"
+          // history row when current_place_id is set).
+          const created = await createItem.mutateAsync({
+            ...payload,
+            id: draftId,
+            ...(params.placeId ? { current_place_id: params.placeId } : {}),
           });
+          itemId = created.id;
+          // If a code came from the scan flow or was scanned in-form, bind it.
+          if (codeValue && activeHouseholdId && user) {
+            await bind.mutateAsync({
+              householdId: activeHouseholdId,
+              codeValue,
+              codeType: scannerTypeToCodeType(codeType === 'other' ? 'other' : codeType),
+              entityType: 'item',
+              entityId: itemId,
+              boundBy: user.id,
+            });
+          }
         }
+        hapticSuccess();
+        router.replace(`/item/${itemId}`);
+      } catch (e) {
+        // Translate the two failures that are guaranteed to be gibberish to a
+        // user: the raw 23505 names a constraint, and 22P05 talks about
+        // Unicode escape sequences while the form simply refuses to save.
+        setError(
+          isDuplicateCodeError(e)
+            ? t('codes.boundElsewhere')
+            : isUnstorableTextError(e)
+              ? t('errors.unstorableText')
+              : errorMessage(e),
+        );
       }
-      hapticSuccess();
-      router.replace(`/item/${itemId}`);
-    } catch (e) {
-      setError(errorMessage(e));
-    }
+    });
+  }
+
+  /** Everything the model gets to look at, whichever button was pressed. */
+  function enrichRequest() {
+    return {
+      householdId: activeHouseholdId!,
+      name,
+      description,
+      category,
+      photoUrls: photos,
+      existingLinks: links,
+      existingTags: tags,
+      barcode: codeValue,
+      barcodeType: codeType,
+      language: profile?.default_language ?? 'en',
+      instruction: instruction.trim() || undefined,
+    };
   }
 
   /**
-   * Ask the model to fill in what it can. Photos ARE sent — enrichment is
-   * vision-based, so an item with only a picture still gets a name, category,
-   * description and value. Existing links and the hand-set value are passed in
-   * and preserved by `applyEnrichment`.
+   * Ask the model to fill in what it can, across the whole form. Photos ARE
+   * sent — enrichment is vision-based — along with the name, category,
+   * description, tags and barcode, and the follow-up instruction if the user
+   * typed one. Existing links and a hand-set value are passed in and preserved
+   * by `applyEnrichment`.
    */
   async function onEnrich() {
     if (!activeHouseholdId) return;
@@ -197,17 +251,7 @@ export default function NewItemScreen() {
     setError(null);
     setEnrichNote(null);
     try {
-      const res = await enrichItem({
-        householdId: activeHouseholdId,
-        name,
-        description,
-        category,
-        photoUrls: photos,
-        existingLinks: links,
-        barcode: codeValue,
-        barcodeType: codeType,
-        language: profile?.default_language ?? 'en',
-      });
+      const res = await enrichItem(enrichRequest());
       const patch = applyEnrichment(
         {
           name,
@@ -239,10 +283,62 @@ export default function NewItemScreen() {
     }
   }
 
-  const canEnrich = photos.length > 0 || !!name.trim() || !!codeValue;
+  /** The ✨ beside one field: rewrite just that field, leave the rest alone. */
+  async function onEnrichField(field: EnrichableField) {
+    if (!activeHouseholdId) return;
+    setEnrichingField(field);
+    setError(null);
+    setEnrichNote(null);
+    try {
+      const res = await enrichItem({ ...enrichRequest(), field });
+      const patch = applyFieldEnrichment(
+        {
+          name,
+          description,
+          category,
+          links,
+          tags,
+          estimatedValue: parseValueInput(value),
+          valueCurrency,
+          valueSource,
+        },
+        res,
+        field,
+      );
+      switch (field) {
+        case 'name': setName(patch.name); break;
+        case 'description': setDescription(patch.description); break;
+        case 'category': setCategory(patch.category); break;
+        case 'tags': setTags(patch.tags); break;
+        case 'links': setLinks(patch.links); break;
+        case 'value':
+          setValue(patch.estimatedValue != null ? String(patch.estimatedValue) : '');
+          setValueCurrency(patch.valueCurrency);
+          setValueSource(patch.valueSource);
+          break;
+      }
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setEnrichingField(null);
+    }
+  }
+
+  const canEnrich = photos.length > 0 || !!name.trim() || !!codeValue || !!instruction.trim();
+  const busy = enriching || enrichingField !== null;
+
+  /** The ✨ for one field, wired to the shared busy state. */
+  const fieldAi = (field: EnrichableField) => (
+    <AiButton
+      onPress={() => onEnrichField(field)}
+      loading={enrichingField === field}
+      disabled={!canEnrich || busy}
+      accessibilityLabel={t('items.aiField', { field: t(`items.${field === 'links' ? 'productLinks' : field}`) })}
+    />
+  );
 
   return (
-    <FormScreen contentContainerStyle={{ padding: spacing.lg, gap: spacing.md }}>
+    <FormScreen contentContainerStyle={{ padding: spacing.lg, gap: spacing.lg }}>
       <H1>{editing ? t('common.edit') : t('items.new')}</H1>
 
         {codeValue ? (
@@ -269,40 +365,75 @@ export default function NewItemScreen() {
           <PhotoInput
             photos={photos}
             onAdd={onAddPhoto}
-            onRemove={(i) => setPhotos((prev) => prev.filter((_, idx) => idx !== i))}
+            onRemove={(i) => setPhotos((prev) => removePhotoAt(prev, i))}
+            onMove={(from, to) => setPhotos((prev) => movePhoto(prev, from, to))}
             uploading={photoUploading}
           />
           {photoError ? <ErrorBanner message={photoError} /> : null}
         </View>
 
         {/* Enrichment sits right under the photos: with a picture attached it
-            can fill in everything below on its own. */}
-        <Button
-          title={photos.length > 0 ? t('items.enrichFromPhoto') : t('items.enrich')}
-          variant="ghost"
-          onPress={onEnrich}
-          loading={enriching}
-          disabled={!canEnrich}
-        />
-        {enrichNote ? <Muted style={{ fontSize: 12 }}>{enrichNote}</Muted> : null}
+            can fill in everything below on its own. The instruction box lets
+            the user steer it — "it's the 18V model", "describe the wear" —
+            instead of re-running it and hoping for a different guess. */}
+        <Card style={{ gap: spacing.sm }}>
+          <Input
+            placeholder={t('items.enrichInstructionPlaceholder')}
+            value={instruction}
+            onChangeText={setInstruction}
+            multiline
+            clearable
+            style={{ minHeight: 44 }}
+            accessibilityLabel={t('items.enrichInstruction')}
+          />
+          <Button
+            title={t('items.enrich')}
+            onPress={onEnrich}
+            loading={enriching}
+            disabled={!canEnrich || busy}
+          />
+          <Muted style={{ fontSize: 11 }}>{t('items.enrichHint')}</Muted>
+          {enrichNote ? <Muted style={{ fontSize: 12 }}>{enrichNote}</Muted> : null}
+        </Card>
 
-        <View style={{ gap: spacing.md }}>
-          <Field label={t('items.name')}>
-            <Input placeholder={t('items.name')} value={name} onChangeText={setName} />
+        <View style={{ gap: spacing.lg }}>
+          <Field label={t('items.name')} action={fieldAi('name')}>
+            <Input
+              placeholder={t('items.name')}
+              value={name}
+              onChangeText={setName}
+              clearable
+              clearLabel={`${t('common.clear')} ${t('items.name')}`}
+            />
           </Field>
-          <Field label={t('items.category')}>
-            <Input placeholder={t('items.category')} value={category} onChangeText={setCategory} />
+          <Field label={t('items.category')} action={fieldAi('category')}>
+            <Input
+              placeholder={t('items.category')}
+              value={category}
+              onChangeText={setCategory}
+              clearable
+            />
           </Field>
-          <Field label={t('items.description')}>
+          <Field label={t('items.description')} action={fieldAi('description')}>
             <Input
               placeholder={t('items.description')}
               value={description}
               onChangeText={setDescription}
               multiline
-              style={{ minHeight: 110 }}
+              clearable
+              clearLabel={`${t('common.clear')} ${t('items.description')}`}
+              style={{ minHeight: 120 }}
             />
           </Field>
-          <Field label={t('items.value')}>
+          <Field label={t('items.quantity')} hint={t('items.quantityHint')}>
+            <Input
+              placeholder="1"
+              value={quantity}
+              onChangeText={setQuantity}
+              keyboardType="number-pad"
+            />
+          </Field>
+          <Field label={t('items.value')} action={fieldAi('value')}>
             <Input
               placeholder={t('items.valuePlaceholder')}
               value={value}
@@ -311,13 +442,14 @@ export default function NewItemScreen() {
                 setValueSource('manual'); // typing makes it the user's number
               }}
               keyboardType="decimal-pad"
+              clearable
             />
             {valueSource === 'ai' ? <Muted style={{ fontSize: 11 }}>{t('items.valueFromAi')}</Muted> : null}
           </Field>
-          <Field label={t('items.tags')}>
+          <Field label={t('items.tags')} action={fieldAi('tags')}>
             <TagInput tags={tags} onChange={setTags} suggestions={tagSuggestions} />
           </Field>
-          <Field label={t('items.productLinks')}>
+          <Field label={t('items.productLinks')} action={fieldAi('links')}>
             <View style={{ gap: 8 }}>
               <LinksCard
                 links={links}
@@ -360,16 +492,5 @@ export default function NewItemScreen() {
           onScan={onScanCode}
         />
     </FormScreen>
-  );
-}
-
-/** A labelled form field — the label sits above the input so it's always clear
- *  what to type, even when the input has a value (placeholders disappear). */
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <View style={{ gap: 4 }}>
-      <Muted style={{ fontSize: 12, fontWeight: '600', textTransform: 'uppercase' }}>{label}</Muted>
-      {children}
-    </View>
   );
 }
