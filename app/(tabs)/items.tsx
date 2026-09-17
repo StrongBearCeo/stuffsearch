@@ -42,8 +42,12 @@ export default function ItemsScreen() {
 
   // A filter carried in from the home screen's "13 not in a place" tiles.
   const params = useLocalSearchParams<{ filter?: string }>();
-  const [dismissedFilter, setDismissedFilter] = useState(false);
-  const activeFilter = !dismissedFilter && isItemFilter(params.filter) ? params.filter : null;
+  // The ROUTE PARAM is the only source of truth for the filter, and dismissing
+  // it clears the param. A local `dismissed` boolean looked equivalent and was
+  // not: this is a tab screen, so it never unmounts, and once the flag was set
+  // no later navigation could clear it — tapping the home tile again did
+  // nothing until the app was force-closed.
+  const activeFilter = isItemFilter(params.filter) ? params.filter : null;
   // `isRefetching` (a user-initiated refresh) NOT `isFetching`: every
   // background refetch flipped isFetching, which re-mounted the RefreshControl
   // mid-scroll and made the list jump and flicker — most visibly right after
@@ -238,7 +242,9 @@ export default function ItemsScreen() {
 
         {activeFilter ? (
           <TouchableOpacity
-            onPress={() => setDismissedFilter(true)}
+            // Clear the param itself, so the next tap on a home tile pushes a
+            // fresh one and the filter comes back.
+            onPress={() => router.setParams({ filter: '' })}
             accessibilityRole="button"
             accessibilityLabel={`${t(`home.filter_${activeFilter}`)} — ${t('common.clear')}`}
             style={{
