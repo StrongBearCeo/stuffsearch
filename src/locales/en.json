@@ -38,7 +38,17 @@
     "reorderHint": "Use ‹ › to reorder — the first photo is the cover.",
     "rotate": "Rotate photo",
     "rotateHint": "Tap ⟳ to turn a photo a quarter turn.",
-    "rotateFailed": "Couldn’t rotate that photo."
+    "rotateFailed": "Couldn’t rotate that photo.",
+    "takePhoto": "Take photo",
+    "undoShot": "Undo last photo",
+    "grantCamera": "Allow camera",
+    "burstHint": "Tap the shutter for each photo — Done when you have them all.",
+    "burstFull": "That is as many as one go can hold. Tap Done to add them.",
+    "burstCount": "{{count}} photo taken",
+    "burstCount_plural": "{{count}} photos taken",
+    "captureFailed": "Couldn’t take that photo. Try again.",
+    "uploadFailed": "{{count}} photo didn’t upload.",
+    "uploadFailed_plural": "{{count}} photos didn’t upload."
   },
   "auth": {
     "welcome": "Welcome to StuffSearch",

@@ -1,32 +1,38 @@
-/** usePhotoPicker — pick a photo from the library or camera, upload it to the
- *  Supabase storage bucket, and resolve to its public URL(s). Shared by the
- *  item (multiple) and place (single) edit forms.
+/** usePhotoPicker — get photos into the Supabase storage bucket and resolve to
+ *  their public URL(s). Shared by the item and place edit forms.
  *
- *  Permission handling:
- *  - Library: requestMediaLibraryPermissionsAsync (needed on Android; harmless
- *    on iOS where the system shows its own limited-access sheet).
- *  - Camera: requestCameraPermissionsAsync, only when the camera source is used.
- *  On denial, an error message is surfaced via `error` and the pick resolves to
- *  null without throwing — the caller shows the message and keeps the form open.
+ *  Two ways in, because they need different things:
+ *  - `pickFromLibrary` runs the system picker (multi-select when `multiple`).
+ *  - `uploadLocal` takes local uris that already exist — the burst of shots
+ *    `PhotoCaptureModal` collected. The camera lives there, not here:
+ *    `ImagePicker.launchCameraAsync` closes after ONE shot, which is what made
+ *    "add six photos" six separate errands.
+ *
+ *  Permission handling: the library picker requests media-library access
+ *  (needed on Android; harmless on iOS where the system shows its own
+ *  limited-access sheet). On denial the message is surfaced via `error` and the
+ *  pick resolves empty without throwing — the caller shows it and keeps the
+ *  form open. Camera permission belongs to the capture modal.
+ *
+ *  Uploads run in parallel and are settled individually: one failed file out of
+ *  six must not discard the other five (see `partitionUploads`).
  */
 import { useState, useCallback } from 'react';
 import * as ImagePicker from 'expo-image-picker';
 import { uploadPhoto } from '../lib/storage';
+import { partitionUploads } from '../lib/photoBurst';
 import { useHousehold } from '../lib/household';
 import { useAuth } from '../lib/auth';
 import { useTranslation } from 'react-i18next';
 
-export type PhotoSource = 'library' | 'camera';
-
 export interface UsePhotoPickerResult {
   uploading: boolean;
   error: string | null;
-  /** Pick from the chosen source, upload, and resolve to the new URL(s).
-   *  Multiple mode returns string[] (may be empty if the user cancelled);
-   *  single mode returns string | null. Resolves null/[] on denial or cancel. */
-  pickAndUpload: (
-    source: PhotoSource,
-  ) => Promise<string[] | null>;
+  /** Run the system library picker, upload, and resolve to the new URLs.
+   *  Empty on cancel or denial. */
+  pickFromLibrary: () => Promise<string[]>;
+  /** Upload local uris (camera shots) and resolve to the URLs that landed. */
+  uploadLocal: (uris: string[]) => Promise<string[]>;
   clearError: () => void;
 }
 
@@ -40,68 +46,79 @@ export function usePhotoPicker(
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const pickAndUpload = useCallback(
-    async (source: PhotoSource): Promise<string[] | null> => {
+  /** Upload every uri, keeping whatever succeeded and reporting the shortfall. */
+  const uploadAll = useCallback(
+    async (uris: string[], userId: string, householdId: string): Promise<string[]> => {
+      const settled = await Promise.allSettled(
+        uris.map((uri) => uploadPhoto(uri, userId, householdId, entity)),
+      );
+      const { urls, failed } = partitionUploads(settled);
+      if (failed > 0) setError(t('photos.uploadFailed', { count: failed }));
+      return urls;
+    },
+    [entity, t],
+  );
+
+  const uploadLocal = useCallback(
+    async (uris: string[]): Promise<string[]> => {
+      if (uris.length === 0) return [];
       if (!user || !activeHouseholdId) {
         setError(t('errors.generic'));
-        return null;
+        return [];
       }
-
-      // Permission gate per source.
-      if (source === 'camera') {
-        const perm = await ImagePicker.requestCameraPermissionsAsync();
-        if (!perm.granted) {
-          setError(t('photos.cameraDenied'));
-          return multiple ? [] : null;
-        }
-      } else {
-        const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (!perm.granted) {
-          setError(t('photos.libraryDenied'));
-          return multiple ? [] : null;
-        }
-      }
-
       setUploading(true);
       setError(null);
       try {
-        const result =
-          source === 'camera'
-            ? await ImagePicker.launchCameraAsync({
-                mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                quality: 0.7,
-                allowsEditing: !multiple,
-              })
-            : await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                quality: 0.7,
-                allowsMultipleSelection: multiple,
-                allowsEditing: !multiple,
-                selectionLimit: multiple ? 0 : 1, // 0 = unlimited in multi mode
-              });
-
-        if (result.canceled || !result.assets || result.assets.length === 0) {
-          return multiple ? [] : null;
-        }
-
-        // Upload each chosen asset; collect the public URLs.
-        const urls: string[] = [];
-        for (const asset of result.assets) {
-          const url = await uploadPhoto(asset.uri, user.id, activeHouseholdId, entity);
-          urls.push(url);
-        }
-        return urls;
+        return await uploadAll(uris, user.id, activeHouseholdId);
       } catch (e) {
         setError(e instanceof Error ? e.message : t('errors.generic'));
-        return multiple ? [] : null;
+        return [];
       } finally {
         setUploading(false);
       }
     },
-    [entity, multiple, user, activeHouseholdId, t],
+    [user, activeHouseholdId, uploadAll, t],
   );
+
+  const pickFromLibrary = useCallback(async (): Promise<string[]> => {
+    if (!user || !activeHouseholdId) {
+      setError(t('errors.generic'));
+      return [];
+    }
+
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      setError(t('photos.libraryDenied'));
+      return [];
+    }
+
+    setUploading(true);
+    setError(null);
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        quality: 0.7,
+        allowsMultipleSelection: multiple,
+        allowsEditing: !multiple,
+        selectionLimit: multiple ? 0 : 1, // 0 = unlimited in multi mode
+      });
+
+      if (result.canceled || !result.assets || result.assets.length === 0) return [];
+
+      return await uploadAll(
+        result.assets.map((asset) => asset.uri),
+        user.id,
+        activeHouseholdId,
+      );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t('errors.generic'));
+      return [];
+    } finally {
+      setUploading(false);
+    }
+  }, [multiple, user, activeHouseholdId, uploadAll, t]);
 
   const clearError = useCallback(() => setError(null), []);
 
-  return { uploading, error, pickAndUpload, clearError };
+  return { uploading, error, pickFromLibrary, uploadLocal, clearError };
 }

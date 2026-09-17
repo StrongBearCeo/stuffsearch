@@ -12,8 +12,9 @@ import { PhotoInput } from '../../src/components/PhotoInput';
 import { LinksCard } from '../../src/components/LinksCard';
 import { TagInput } from '../../src/components/Tags';
 import { ScanCameraModal } from '../../src/components/ScanCameraModal';
+import { PhotoCaptureModal } from '../../src/components/PhotoCaptureModal';
 import { useCreateItem, useUpdateItem, useItem, useItems } from '../../src/hooks/useItems';
-import { usePhotoPicker, type PhotoSource } from '../../src/hooks/usePhotoPicker';
+import { usePhotoPicker } from '../../src/hooks/usePhotoPicker';
 import { usePhotoRotate } from '../../src/hooks/usePhotoRotate';
 import { useBindExternalCode } from '../../src/hooks/useExternalCode';
 import { useHousehold } from '../../src/lib/household';
@@ -54,7 +55,7 @@ export default function NewItemScreen() {
   const updateItem = useUpdateItem();
   const bind = useBindExternalCode();
   const { data: allItems } = useItems();
-  const { pickAndUpload, uploading: photoUploading, error: photoError, clearError } = usePhotoPicker('items', true);
+  const { pickFromLibrary, uploadLocal, uploading: photoUploading, error: photoError, clearError } = usePhotoPicker('items', true);
   const {
     rotate: rotatePhoto,
     rotatingIndex,
@@ -76,6 +77,9 @@ export default function NewItemScreen() {
   // scan tab). Bound to the new item on save.
   const [scannedCode, setScannedCode] = useState<{ value: string; type: ExternalCodeType } | null>(null);
   const [scanOpen, setScanOpen] = useState(false);
+  /** The burst camera. Kept out of the picker hook: several shots in one
+   *  session is a camera UI, not a system picker call. */
+  const [captureOpen, setCaptureOpen] = useState(false);
   const [enriching, setEnriching] = useState(false);
   /** Which single field the ✨ is currently working on, if any. */
   const [enrichingField, setEnrichingField] = useState<EnrichableField | null>(null);
@@ -129,21 +133,28 @@ export default function NewItemScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [existing?.id, params.name]);
 
-  /** Ask the user where to pick from, then upload. Item form supports multiple. */
+  /** Ask the user where to pick from. Both sources take several photos at once:
+   *  the library picker is multi-select, and the camera stays open across shots. */
   function onAddPhoto() {
     clearError();
     Alert.alert(t('photos.chooseSource'), undefined, [
-      { text: t('photos.camera'), onPress: () => runPicker('camera') },
-      { text: t('photos.library'), onPress: () => runPicker('library') },
+      { text: t('photos.camera'), onPress: () => setCaptureOpen(true) },
+      { text: t('photos.library'), onPress: () => runLibraryPicker() },
       { text: t('common.cancel'), style: 'cancel' },
     ]);
   }
 
-  async function runPicker(source: PhotoSource) {
-    const urls = await pickAndUpload(source);
-    if (urls && urls.length > 0) {
-      setPhotos((prev) => addPhotos(prev, urls));
-    }
+  async function runLibraryPicker() {
+    const urls = await pickFromLibrary();
+    if (urls.length > 0) setPhotos((prev) => addPhotos(prev, urls));
+  }
+
+  /** A finished burst: close the camera first so the form's own uploading
+   *  spinner is what the user waits on, then upload every shot. */
+  async function onCaptured(uris: string[]) {
+    setCaptureOpen(false);
+    const urls = await uploadLocal(uris);
+    if (urls.length > 0) setPhotos((prev) => addPhotos(prev, urls));
   }
 
   /** Rotate one photo a quarter turn and swap in the new URL in place. */
@@ -495,6 +506,12 @@ export default function NewItemScreen() {
           hint={t('items.scanCode')}
           onClose={() => setScanOpen(false)}
           onScan={onScanCode}
+        />
+
+        <PhotoCaptureModal
+          visible={captureOpen}
+          onDone={onCaptured}
+          onClose={() => setCaptureOpen(false)}
         />
     </FormScreen>
   );

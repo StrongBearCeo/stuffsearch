@@ -10,9 +10,10 @@ import { BarcodeImage } from '../../src/components/BarcodeImage';
 import { PhotoInput } from '../../src/components/PhotoInput';
 import { TagInput } from '../../src/components/Tags';
 import { ScanCameraModal } from '../../src/components/ScanCameraModal';
+import { PhotoCaptureModal } from '../../src/components/PhotoCaptureModal';
 import { useCreatePlace, useUpdatePlace, usePlace, usePlaces } from '../../src/hooks/usePlaces';
 import { useUpdateItem } from '../../src/hooks/useItems';
-import { usePhotoPicker, type PhotoSource } from '../../src/hooks/usePhotoPicker';
+import { usePhotoPicker } from '../../src/hooks/usePhotoPicker';
 import { usePhotoRotate } from '../../src/hooks/usePhotoRotate';
 import { useBindExternalCode } from '../../src/hooks/useExternalCode';
 import { useHousehold } from '../../src/lib/household';
@@ -50,7 +51,7 @@ export default function NewPlaceScreen() {
   // Places take several photos now, exactly like items. The form used to run
   // the picker in single mode and overwrite `photo`, which is why a second
   // photo always replaced the first.
-  const { pickAndUpload, uploading: photoUploading, error: photoError, clearError } = usePhotoPicker('places', true);
+  const { pickFromLibrary, uploadLocal, uploading: photoUploading, error: photoError, clearError } = usePhotoPicker('places', true);
   const {
     rotate: rotatePhoto,
     rotatingIndex,
@@ -70,6 +71,9 @@ export default function NewPlaceScreen() {
   // scan tab). Bound to the new place on save.
   const [scannedCode, setScannedCode] = useState<{ value: string; type: ExternalCodeType } | null>(null);
   const [scanOpen, setScanOpen] = useState(false);
+  /** The burst camera. Kept out of the picker hook: several shots in one
+   *  session is a camera UI, not a system picker call. */
+  const [captureOpen, setCaptureOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // See item/new.tsx: drops a duplicate Save landing in the same frame.
@@ -106,21 +110,28 @@ export default function NewPlaceScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [existing?.id, params.name]);
 
-  /** Ask where to pick from, then upload. Places accept several photos. */
+  /** Ask where to pick from. Places accept several photos from either source:
+   *  the library picker is multi-select, the camera stays open across shots. */
   function onAddPhoto() {
     clearError();
     Alert.alert(t('photos.chooseSource'), undefined, [
-      { text: t('photos.camera'), onPress: () => runPicker('camera') },
-      { text: t('photos.library'), onPress: () => runPicker('library') },
+      { text: t('photos.camera'), onPress: () => setCaptureOpen(true) },
+      { text: t('photos.library'), onPress: () => runLibraryPicker() },
       { text: t('common.cancel'), style: 'cancel' },
     ]);
   }
 
-  async function runPicker(source: PhotoSource) {
-    const urls = await pickAndUpload(source);
-    if (urls && urls.length > 0) {
-      setPhotos((prev) => addPhotos(prev, urls));
-    }
+  async function runLibraryPicker() {
+    const urls = await pickFromLibrary();
+    if (urls.length > 0) setPhotos((prev) => addPhotos(prev, urls));
+  }
+
+  /** A finished burst: close the camera first so the form's own uploading
+   *  spinner is what the user waits on, then upload every shot. */
+  async function onCaptured(uris: string[]) {
+    setCaptureOpen(false);
+    const urls = await uploadLocal(uris);
+    if (urls.length > 0) setPhotos((prev) => addPhotos(prev, urls));
   }
 
   /** Rotate one photo a quarter turn and swap in the new URL in place. */
@@ -378,6 +389,12 @@ export default function NewPlaceScreen() {
         hint={t('items.scanCode')}
         onClose={() => setScanOpen(false)}
         onScan={onScanCode}
+      />
+
+      <PhotoCaptureModal
+        visible={captureOpen}
+        onDone={onCaptured}
+        onClose={() => setCaptureOpen(false)}
       />
     </FormScreen>
   );

@@ -38,7 +38,17 @@
     "reorderHint": "Dùng ‹ › để sắp xếp — ảnh đầu tiên là ảnh bìa.",
     "rotate": "Xoay ảnh",
     "rotateHint": "Chạm ⟳ để xoay ảnh một phần tư vòng.",
-    "rotateFailed": "Không xoay được ảnh này."
+    "rotateFailed": "Không xoay được ảnh này.",
+    "takePhoto": "Chụp ảnh",
+    "undoShot": "Hoàn tác ảnh vừa chụp",
+    "grantCamera": "Cho phép máy ảnh",
+    "burstHint": "Chạm nút chụp cho mỗi ảnh — chọn Xong khi đã đủ.",
+    "burstFull": "Đã đủ số ảnh cho một lượt. Chạm Xong để thêm vào.",
+    "burstCount": "Đã chụp {{count}} ảnh",
+    "burstCount_plural": "Đã chụp {{count}} ảnh",
+    "captureFailed": "Không chụp được ảnh này. Hãy thử lại.",
+    "uploadFailed": "{{count}} ảnh chưa tải lên được.",
+    "uploadFailed_plural": "{{count}} ảnh chưa tải lên được."
   },
   "auth": {
     "welcome": "Chào mừng đến StuffSearch",

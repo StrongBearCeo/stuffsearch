@@ -101,6 +101,16 @@ covered by tests before the work is considered done.
   with no normalisation produced `tool` AND `tools`, `cable` AND `cables`.
   Migration 0011 folded every category into `tags` and dropped the column. Use
   tags; don't reintroduce a second labelling axis.
+- **The camera is a burst, the picker is a picker.** `launchCameraAsync`
+  returns after ONE shot, so adding six photos of a box was six trips through
+  the source prompt, the camera, the upload and the form. The library picker
+  has always been multi-select; the camera is the side that needed fixing.
+  `PhotoCaptureModal` keeps the native camera open and collects LOCAL
+  uris (`src/lib/photoBurst.ts`); `usePhotoPicker.uploadLocal` uploads them on
+  Done. Nothing is uploaded by a cancelled session, and uploads are settled
+  individually (`partitionUploads`) so one failed file doesn't discard the
+  rest. Mount the CameraView only while visible and key it per open — same
+  black-preview lesson as `ScanCameraModal`.
 - **Photo rotation re-encodes the image** (`usePhotoRotate`), it is not a
   display-time transform. An orientation column would have to be threaded
   through every list, card, print sheet and AI upload, and anything that missed
