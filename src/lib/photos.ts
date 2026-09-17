@@ -57,6 +57,19 @@ export function replacePhotoAt(photos: string[], index: number, url: string): st
   return next;
 }
 
+/**
+ * How many offset "pages" to draw behind a list thumbnail so several photos
+ * read as a stack at a glance.
+ *
+ * Capped at two: the thumbnails are 48px (32px in the place tree), and a third
+ * sliver is indistinguishable from a rendering artefact. The exact number is
+ * carried by the count badge, not by counting edges.
+ */
+export function stackLayers(photoCount: number): 0 | 1 | 2 {
+  if (!Number.isFinite(photoCount) || photoCount < 2) return 0;
+  return photoCount === 2 ? 1 : 2;
+}
+
 /** Quarter turns, clockwise, wrapping at a full revolution. */
 export function nextRotation(current: number): 0 | 90 | 180 | 270 {
   const normalized = ((Math.round(current / 90) * 90) % 360 + 360) % 360;

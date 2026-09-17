@@ -11,6 +11,7 @@ import { View, ScrollView, Text, TouchableOpacity, Alert, Share } from 'react-na
 import { router, useLocalSearchParams } from 'expo-router';
 import QRCode from 'react-native-qrcode-svg';
 import { H2, Body, Muted, Card, Screen, MaxWidth, Button, ErrorBanner } from '../../src/components/primitives';
+import { PhotoThumb } from '../../src/components/PhotoThumb';
 import { ExpoImage } from '../../src/components/ExpoImage';
 import { PhotoViewer } from '../../src/components/PhotoViewer';
 import { ItemCard } from '../../src/components/ItemCard';
@@ -558,34 +559,14 @@ export default function PlaceDetailScreen() {
  *  nothing, and the photo is how you recognise which shelf is which. Places
  *  without one keep the icon rather than showing an empty grey square. */
 function PlaceRow({ place, onPress }: { place: Place; onPress: () => void }) {
-  const photo = placePhotos(place)[0];
   return (
     <TouchableOpacity onPress={onPress} accessibilityRole="button" accessibilityLabel={place.name}>
       <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-        {photo ? (
-          <ExpoImage
-            uri={photo}
-            style={{
-              width: 48,
-              height: 48,
-              borderRadius: 8,
-              backgroundColor: colors.surfaceAlt,
-            }}
-          />
-        ) : (
-          <View
-            style={{
-              width: 48,
-              height: 48,
-              borderRadius: 8,
-              backgroundColor: tint(colors.primary, '22'),
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <Text style={{ fontSize: 22 }}>📦</Text>
-          </View>
-        )}
+        <PhotoThumb
+          photos={placePhotos(place)}
+          accessibilityLabel={place.name}
+          fallback={<Text style={{ fontSize: 22 }}>📦</Text>}
+        />
         {/* minWidth:0 so a long name shrinks instead of being floored at its
             content width — see ItemCard. */}
         <View style={{ flex: 1, minWidth: 0 }}>

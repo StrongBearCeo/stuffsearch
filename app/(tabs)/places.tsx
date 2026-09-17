@@ -9,7 +9,8 @@ import { View, FlatList, RefreshControl, Text, TouchableOpacity } from 'react-na
 import { useRouter } from 'expo-router';
 import { Screen, Input, EmptyState, ErrorBanner, Button, H1, Muted, ListSkeleton } from '../../src/components/primitives';
 import { PlaceCard } from '../../src/components/PlaceCard';
-import { ExpoImage } from '../../src/components/ExpoImage';
+import { PhotoThumb } from '../../src/components/PhotoThumb';
+import { placePhotos } from '../../src/lib/photos';
 import { TagFilterBar } from '../../src/components/Tags';
 import { usePlaces } from '../../src/hooks/usePlaces';
 import { useResponsive } from '../../src/hooks/useResponsive';
@@ -259,10 +260,7 @@ function PlaceTreeItem({
           padding: spacing.sm,
         }}
       >
-        <ExpoImage
-          uri={place.photo_url}
-          style={{ width: 32, height: 32, borderRadius: 6, backgroundColor: colors.surfaceAlt }}
-        />
+        <PhotoThumb photos={placePhotos(place)} size={32} />
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text style={{ color: colors.text, fontSize: 14, fontWeight: '600' }} numberOfLines={1}>
             {place.name}

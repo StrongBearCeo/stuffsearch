@@ -3,7 +3,7 @@
  *  the card falls back to the generic "Located" badge. */
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
-import { ExpoImage } from './ExpoImage';
+import { PhotoThumb } from './PhotoThumb';
 import { Card, Body, Muted } from './primitives';
 import { formatMoney } from '../lib/value';
 import { formatQuantity } from '../lib/quantity';
@@ -43,10 +43,7 @@ export function ItemCard({
       accessibilityHint={located ? t('items.located') : t('items.notLocated')}
     >
       <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-        <ExpoImage
-          uri={item.photo_urls?.[0]}
-          style={{ width: 48, height: 48, borderRadius: 8, backgroundColor: colors.surfaceAlt }}
-        />
+        <PhotoThumb photos={item.photo_urls ?? []} accessibilityLabel={item.name} />
         {/* minWidth:0 lets this column actually shrink. Without it a flex
             child in RN is floored at its content width, so a long location
             badge on the right squeezed the name to a few pixels and the title

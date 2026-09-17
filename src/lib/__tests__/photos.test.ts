@@ -13,6 +13,7 @@ import {
   placePhotos,
   placePhotoColumns,
   replacePhotoAt,
+  stackLayers,
 } from '../photos';
 
 const A = 'https://cdn.test/a.jpg';
@@ -194,5 +195,26 @@ describe('nextRotation', () => {
   it('normalises anything unexpected', () => {
     expect(nextRotation(360)).toBe(90);
     expect(nextRotation(-90)).toBe(0);
+  });
+});
+
+describe('stackLayers', () => {
+  it('draws nothing behind a single photo', () => {
+    expect(stackLayers(1)).toBe(0);
+    expect(stackLayers(0)).toBe(0);
+  });
+
+  it('draws one layer for a pair', () => {
+    expect(stackLayers(2)).toBe(1);
+  });
+
+  it('caps at two layers — a deeper stack reads as clutter at 48px', () => {
+    expect(stackLayers(3)).toBe(2);
+    expect(stackLayers(9)).toBe(2);
+  });
+
+  it('never returns a negative count for nonsense input', () => {
+    expect(stackLayers(-4)).toBe(0);
+    expect(stackLayers(Number.NaN)).toBe(0);
   });
 });

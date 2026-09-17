@@ -2,7 +2,8 @@
  *  show where the place lives (its parent place), like ItemCard's location. */
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
-import { ExpoImage } from './ExpoImage';
+import { PhotoThumb } from './PhotoThumb';
+import { placePhotos } from '../lib/photos';
 import { Card, Body, Muted } from './primitives';
 import { colors, tint } from '../theme';
 import type { Place } from '../lib/supabase';
@@ -32,10 +33,7 @@ export function PlaceCard({
       accessibilityHint={count != null ? `${count}` : undefined}
     >
       <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-        <ExpoImage
-          uri={place.photo_url}
-          style={{ width: 48, height: 48, borderRadius: 8, backgroundColor: colors.surfaceAlt }}
-        />
+        <PhotoThumb photos={placePhotos(place)} accessibilityLabel={place.name} />
         {/* minWidth:0 — see ItemCard: without it the name column cannot
             shrink and a long parent-place badge wraps the title one character
             per line. */}
