@@ -554,24 +554,44 @@ export default function PlaceDetailScreen() {
   );
 }
 
+/** A nested place. Shows its own photo — a row of identical 📦 icons tells you
+ *  nothing, and the photo is how you recognise which shelf is which. Places
+ *  without one keep the icon rather than showing an empty grey square. */
 function PlaceRow({ place, onPress }: { place: Place; onPress: () => void }) {
+  const photo = placePhotos(place)[0];
   return (
     <TouchableOpacity onPress={onPress} accessibilityRole="button" accessibilityLabel={place.name}>
       <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-        <View
-          style={{
-            width: 48,
-            height: 48,
-            borderRadius: 8,
-            backgroundColor: tint(colors.primary, '22'),
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <Text style={{ fontSize: 22 }}>📦</Text>
-        </View>
-        <View style={{ flex: 1 }}>
-          <Body style={{ fontWeight: '600' }}>{place.name}</Body>
+        {photo ? (
+          <ExpoImage
+            uri={photo}
+            style={{
+              width: 48,
+              height: 48,
+              borderRadius: 8,
+              backgroundColor: colors.surfaceAlt,
+            }}
+          />
+        ) : (
+          <View
+            style={{
+              width: 48,
+              height: 48,
+              borderRadius: 8,
+              backgroundColor: tint(colors.primary, '22'),
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Text style={{ fontSize: 22 }}>📦</Text>
+          </View>
+        )}
+        {/* minWidth:0 so a long name shrinks instead of being floored at its
+            content width — see ItemCard. */}
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Body style={{ fontWeight: '600' }} numberOfLines={2}>
+            {place.name}
+          </Body>
           {place.description ? <Muted numberOfLines={2}>{place.description}</Muted> : null}
         </View>
       </Card>
