@@ -17,7 +17,6 @@ import { parseValueInput, DEFAULT_CURRENCY } from './value';
 export interface EnrichSnapshot {
   name: string;
   description: string;
-  category: string;
   links: string[];
   tags: string[];
   estimatedValue: number | null;
@@ -28,7 +27,6 @@ export interface EnrichSnapshot {
 /** What the enrich-item Edge Function may return. Every field is optional. */
 export interface EnrichSuggestion {
   name?: string;
-  category?: string;
   description?: string;
   /** Legacy single-link field, still accepted. */
   product_link?: string;
@@ -41,7 +39,6 @@ export interface EnrichSuggestion {
 export interface EnrichPatch {
   name: string;
   description: string;
-  category: string;
   links: string[];
   tags: string[];
   estimatedValue: number | null;
@@ -77,7 +74,6 @@ export function applyEnrichment(
   return {
     name: preferSuggested(current.name, suggestion.name),
     description: preferSuggested(current.description, suggestion.description),
-    category: preferSuggested(current.category, suggestion.category),
     links: mergeLinks(current.links, incomingLinks),
     tags,
     estimatedValue: takeValue ? suggestedValue : current.estimatedValue,
@@ -93,7 +89,6 @@ export function applyEnrichment(
 export const ENRICHABLE_FIELDS = [
   'name',
   'description',
-  'category',
   'tags',
   'links',
   'value',
@@ -123,7 +118,6 @@ export function applyFieldEnrichment(
   const base: EnrichPatch = {
     name: current.name,
     description: current.description,
-    category: current.category,
     links: [...current.links],
     tags: [...current.tags],
     estimatedValue: current.estimatedValue,
@@ -136,8 +130,6 @@ export function applyFieldEnrichment(
       return { ...base, name: preferSuggested(current.name, suggestion.name) };
     case 'description':
       return { ...base, description: preferSuggested(current.description, suggestion.description) };
-    case 'category':
-      return { ...base, category: preferSuggested(current.category, suggestion.category) };
     case 'tags': {
       let tags = parseTagsInput(current.tags.join(','));
       for (const tag of suggestion.tags ?? []) tags = addTag(tags, tag);

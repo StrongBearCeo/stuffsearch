@@ -9,8 +9,10 @@ import {
   addPhotos,
   removePhotoAt,
   movePhoto,
+  nextRotation,
   placePhotos,
   placePhotoColumns,
+  replacePhotoAt,
 } from '../photos';
 
 const A = 'https://cdn.test/a.jpg';
@@ -144,5 +146,53 @@ describe('placePhotoColumns', () => {
 
   it('de-duplicates and drops blanks before writing', () => {
     expect(placePhotoColumns([A, '', A, B])).toEqual({ photo_urls: [A, B], photo_url: A });
+  });
+});
+
+describe('replacePhotoAt', () => {
+  it('swaps one url in place, preserving order', () => {
+    expect(replacePhotoAt([A, B, C], 1, 'https://cdn.test/b-rotated.jpg')).toEqual([
+      A,
+      'https://cdn.test/b-rotated.jpg',
+      C,
+    ]);
+  });
+
+  it('keeps the cover photo the cover when it is the one rotated', () => {
+    const out = replacePhotoAt([A, B], 0, 'https://cdn.test/a-rotated.jpg');
+    expect(out[0]).toBe('https://cdn.test/a-rotated.jpg');
+  });
+
+  it('ignores an out-of-range index', () => {
+    expect(replacePhotoAt([A, B], 9, C)).toEqual([A, B]);
+    expect(replacePhotoAt([A, B], -1, C)).toEqual([A, B]);
+  });
+
+  it('ignores a blank replacement rather than leaving a hole', () => {
+    expect(replacePhotoAt([A, B], 0, '')).toEqual([A, B]);
+    expect(replacePhotoAt([A, B], 0, '   ')).toEqual([A, B]);
+  });
+
+  it('does not mutate the input', () => {
+    const list = [A, B];
+    replacePhotoAt(list, 0, C);
+    expect(list).toEqual([A, B]);
+  });
+});
+
+describe('nextRotation', () => {
+  it('steps a quarter turn clockwise', () => {
+    expect(nextRotation(0)).toBe(90);
+    expect(nextRotation(90)).toBe(180);
+    expect(nextRotation(180)).toBe(270);
+  });
+
+  it('wraps back to zero after a full turn', () => {
+    expect(nextRotation(270)).toBe(0);
+  });
+
+  it('normalises anything unexpected', () => {
+    expect(nextRotation(360)).toBe(90);
+    expect(nextRotation(-90)).toBe(0);
   });
 });

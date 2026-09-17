@@ -14,6 +14,7 @@ import { TagInput } from '../../src/components/Tags';
 import { ScanCameraModal } from '../../src/components/ScanCameraModal';
 import { useCreateItem, useUpdateItem, useItem, useItems } from '../../src/hooks/useItems';
 import { usePhotoPicker, type PhotoSource } from '../../src/hooks/usePhotoPicker';
+import { usePhotoRotate } from '../../src/hooks/usePhotoRotate';
 import { useBindExternalCode } from '../../src/hooks/useExternalCode';
 import { useHousehold } from '../../src/lib/household';
 import { useAuth } from '../../src/lib/auth';
@@ -22,7 +23,7 @@ import { enrichItem } from '../../src/lib/llm';
 import { applyEnrichment, applyFieldEnrichment, type EnrichableField } from '../../src/lib/enrich';
 import { itemLinks, linkColumns, mergeLinks, normalizeLink } from '../../src/lib/links';
 import { collectTags } from '../../src/lib/tags';
-import { addPhotos, movePhoto, removePhotoAt } from '../../src/lib/photos';
+import { addPhotos, movePhoto, removePhotoAt, replacePhotoAt } from '../../src/lib/photos';
 import { parseQuantity, itemQuantity } from '../../src/lib/quantity';
 import { parseValueInput, DEFAULT_CURRENCY } from '../../src/lib/value';
 import { createSubmitGuard } from '../../src/lib/submit';
@@ -41,7 +42,6 @@ export default function NewItemScreen() {
     code?: string;
     type?: string;
     name?: string;
-    category?: string;
     placeId?: string;
   }>();
   const editing = !!params.id;
@@ -55,10 +55,15 @@ export default function NewItemScreen() {
   const bind = useBindExternalCode();
   const { data: allItems } = useItems();
   const { pickAndUpload, uploading: photoUploading, error: photoError, clearError } = usePhotoPicker('items', true);
+  const {
+    rotate: rotatePhoto,
+    rotatingIndex,
+    error: rotateError,
+    clearError: clearRotateError,
+  } = usePhotoRotate('items');
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [category, setCategory] = useState('');
   const [links, setLinks] = useState<string[]>([]);
   const [linkDraft, setLinkDraft] = useState('');
   const [tags, setTags] = useState<string[]>([]);
@@ -111,7 +116,6 @@ export default function NewItemScreen() {
     if (editing && existing) {
       setName(existing.name);
       setDescription(existing.description ?? '');
-      setCategory(existing.category ?? '');
       setLinks(itemLinks(existing));
       setTags(existing.tags ?? []);
       setQuantity(String(itemQuantity(existing.quantity)));
@@ -121,7 +125,6 @@ export default function NewItemScreen() {
       setPhotos(existing.photo_urls ?? []);
     } else {
       setName(params.name ?? '');
-      setCategory(params.category ?? '');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [existing?.id, params.name]);
@@ -141,6 +144,15 @@ export default function NewItemScreen() {
     if (urls && urls.length > 0) {
       setPhotos((prev) => addPhotos(prev, urls));
     }
+  }
+
+  /** Rotate one photo a quarter turn and swap in the new URL in place. */
+  async function onRotatePhoto(index: number) {
+    clearRotateError();
+    const current = photos[index];
+    if (!current) return;
+    const rotated = await rotatePhoto(current, index);
+    if (rotated) setPhotos((prev) => replacePhotoAt(prev, index, rotated));
   }
 
   /** Open a link from the editor so the user can check it before saving. */
@@ -168,7 +180,6 @@ export default function NewItemScreen() {
         const payload = {
           name: name.trim(),
           description: description.trim() || null,
-          category: category.trim() || null,
           ...linkColumns(mergeLinks(links, linkDraft ? [linkDraft] : [])),
           tags,
           quantity: parseQuantity(quantity) ?? 1,
@@ -227,7 +238,6 @@ export default function NewItemScreen() {
       householdId: activeHouseholdId!,
       name,
       description,
-      category,
       photoUrls: photos,
       existingLinks: links,
       existingTags: tags,
@@ -240,8 +250,8 @@ export default function NewItemScreen() {
 
   /**
    * Ask the model to fill in what it can, across the whole form. Photos ARE
-   * sent — enrichment is vision-based — along with the name, category,
-   * description, tags and barcode, and the follow-up instruction if the user
+   * sent — enrichment is vision-based — along with the name, description,
+   * tags and barcode, and the follow-up instruction if the user
    * typed one. Existing links and a hand-set value are passed in and preserved
    * by `applyEnrichment`.
    */
@@ -256,7 +266,6 @@ export default function NewItemScreen() {
         {
           name,
           description,
-          category,
           links,
           tags,
           estimatedValue: parseValueInput(value),
@@ -267,7 +276,6 @@ export default function NewItemScreen() {
       );
       setName(patch.name);
       setDescription(patch.description);
-      setCategory(patch.category);
       setLinks(patch.links);
       setTags(patch.tags);
       setValue(patch.estimatedValue != null ? String(patch.estimatedValue) : '');
@@ -295,7 +303,6 @@ export default function NewItemScreen() {
         {
           name,
           description,
-          category,
           links,
           tags,
           estimatedValue: parseValueInput(value),
@@ -308,7 +315,6 @@ export default function NewItemScreen() {
       switch (field) {
         case 'name': setName(patch.name); break;
         case 'description': setDescription(patch.description); break;
-        case 'category': setCategory(patch.category); break;
         case 'tags': setTags(patch.tags); break;
         case 'links': setLinks(patch.links); break;
         case 'value':
@@ -367,9 +373,12 @@ export default function NewItemScreen() {
             onAdd={onAddPhoto}
             onRemove={(i) => setPhotos((prev) => removePhotoAt(prev, i))}
             onMove={(from, to) => setPhotos((prev) => movePhoto(prev, from, to))}
+            onRotate={onRotatePhoto}
+            rotatingIndex={rotatingIndex}
             uploading={photoUploading}
           />
           {photoError ? <ErrorBanner message={photoError} /> : null}
+          {rotateError ? <ErrorBanner message={rotateError} /> : null}
         </View>
 
         {/* Enrichment sits right under the photos: with a picture attached it
@@ -402,16 +411,12 @@ export default function NewItemScreen() {
               placeholder={t('items.name')}
               value={name}
               onChangeText={setName}
+              // Names get long ("Unbranded short USB-A 3.0 blue to USB-C
+              // cable"); a single line clipped them mid-word while editing.
+              multiline
               clearable
               clearLabel={`${t('common.clear')} ${t('items.name')}`}
-            />
-          </Field>
-          <Field label={t('items.category')} action={fieldAi('category')}>
-            <Input
-              placeholder={t('items.category')}
-              value={category}
-              onChangeText={setCategory}
-              clearable
+              style={{ minHeight: 48 }}
             />
           </Field>
           <Field label={t('items.description')} action={fieldAi('description')}>

@@ -141,8 +141,8 @@ export default function ItemDetailScreen() {
    * Give this item the storage abilities of a place.
    *
    * This used to DESTROY the item: a new place was created from a few of its
-   * fields and the item row was deleted, silently throwing away its category,
-   * value, product links and extra photos. Now the item keeps everything and
+   * fields and the item row was deleted, silently throwing away its value,
+   * product links and extra photos. Now the item keeps everything and
    * simply gains a place facet, and the two stay in sync.
    */
   function onConvertToPlace() {
@@ -253,7 +253,6 @@ export default function ItemDetailScreen() {
         field: 'value',
         name: item.name,
         description: item.description ?? undefined,
-        category: item.category ?? undefined,
         photoUrls: item.photo_urls ?? [],
         existingTags: item.tags ?? [],
         language: profile?.default_language ?? 'en',
@@ -262,7 +261,6 @@ export default function ItemDetailScreen() {
         {
           name: item.name,
           description: item.description ?? '',
-          category: item.category ?? '',
           links,
           tags: item.tags ?? [],
           estimatedValue: item.estimated_value,
@@ -456,7 +454,6 @@ export default function ItemDetailScreen() {
         <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm }}>
           <View style={{ flex: 1, minWidth: 0 }}>
             <H2>{item.name}</H2>
-            {item.category ? <Muted>{item.category}</Muted> : null}
           </View>
           <Button title={t('common.edit')} variant="ghost" onPress={() => router.push({ pathname: '/item/new', params: { id: item.id } } as never)} />
         </View>

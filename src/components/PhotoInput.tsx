@@ -3,6 +3,9 @@
  *  (`onAdd`), removal (`onRemove`) and reordering (`onMove`). Shows an
  *  uploading overlay on the add tile while `uploading` is true.
  *
+ *  ⟳ rotates a photo a quarter turn (the image itself is re-encoded and
+ *  re-uploaded — see usePhotoRotate for why it isn't a display-time transform).
+ *
  *  Reordering is done with ‹ / › nudge buttons rather than drag-and-drop: the
  *  row lives inside a horizontal ScrollView inside a vertical form, where a
  *  long-press drag fights both scroll directions. Two taps are unambiguous,
@@ -23,13 +26,25 @@ export interface PhotoInputProps {
   onRemove?: (index: number) => void;
   /** Called with (from, to) to reorder. Omit to hide the reorder buttons. */
   onMove?: (from: number, to: number) => void;
+  /** Rotate the photo at this index a quarter turn. Omit to hide the button. */
+  onRotate?: (index: number) => void;
+  /** Index currently being rotated, so only that tile shows a spinner. */
+  rotatingIndex?: number | null;
   /** True while a pick+upload is in flight; dims the add tile + shows a spinner. */
   uploading?: boolean;
 }
 
 const TILE = 88;
 
-export function PhotoInput({ photos, onAdd, onRemove, onMove, uploading }: PhotoInputProps) {
+export function PhotoInput({
+  photos,
+  onAdd,
+  onRemove,
+  onMove,
+  onRotate,
+  rotatingIndex,
+  uploading,
+}: PhotoInputProps) {
   const { t } = useTranslation();
   const canReorder = !!onMove && photos.length > 1;
 
@@ -71,6 +86,35 @@ export function PhotoInput({ photos, onAdd, onRemove, onMove, uploading }: Photo
                     {t('photos.cover')}
                   </Text>
                 </View>
+              ) : null}
+              {onRotate ? (
+                <TouchableOpacity
+                  onPress={() => onRotate(i)}
+                  disabled={rotatingIndex != null}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('photos.rotate')}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  style={{
+                    position: 'absolute',
+                    top: -6,
+                    left: -6,
+                    width: 22,
+                    height: 22,
+                    borderRadius: 11,
+                    backgroundColor: colors.surfaceAlt,
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    opacity: rotatingIndex != null && rotatingIndex !== i ? 0.4 : 1,
+                  }}
+                >
+                  {rotatingIndex === i ? (
+                    <ActivityIndicator size="small" color={colors.primary} />
+                  ) : (
+                    <Text style={{ color: colors.text, fontSize: 12, fontWeight: '700' }}>⟳</Text>
+                  )}
+                </TouchableOpacity>
               ) : null}
               {onRemove ? (
                 <TouchableOpacity
@@ -142,8 +186,10 @@ export function PhotoInput({ photos, onAdd, onRemove, onMove, uploading }: Photo
         </TouchableOpacity>
       </ScrollView>
 
-      {canReorder ? (
-        <Text style={{ color: colors.textMuted, fontSize: 11 }}>{t('photos.reorderHint')}</Text>
+      {canReorder || onRotate ? (
+        <Text style={{ color: colors.textMuted, fontSize: 11 }}>
+          {canReorder ? t('photos.reorderHint') : t('photos.rotateHint')}
+        </Text>
       ) : null}
     </View>
   );

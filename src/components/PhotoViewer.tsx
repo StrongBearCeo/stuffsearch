@@ -33,11 +33,15 @@ import Animated, {
   runOnJS,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { clampPan } from '../lib/zoomPan';
 import { colors, spacing } from '../theme';
 
 const MIN_SCALE = 1;
 const MAX_SCALE = 6;
 const DOUBLE_TAP_SCALE = 2.5;
+/** The image is laid out at this fraction of the viewport height (contain-fit),
+ *  so the pan bounds must be computed against that box, not the whole screen. */
+const PHOTO_HEIGHT_RATIO = 0.8;
 
 export interface PhotoViewerProps {
   visible: boolean;
@@ -153,16 +157,46 @@ function ZoomablePhoto({
         savedY.value = 0;
       }
       savedScale.value = Math.max(MIN_SCALE, Math.min(MAX_SCALE, scale.value));
+      // Pinching back out shrinks the pannable area; without re-clamping, the
+      // photo stays parked off to one side of an otherwise empty screen.
+      const settled = clampPan(
+        translateX.value,
+        translateY.value,
+        width,
+        height * PHOTO_HEIGHT_RATIO,
+        width,
+        height,
+        savedScale.value,
+      );
+      translateX.value = withTiming(settled.x);
+      translateY.value = withTiming(settled.y);
+      savedX.value = settled.x;
+      savedY.value = settled.y;
       runOnJS(onZoomChange)(savedScale.value > MIN_SCALE);
     });
+
+  /** Content box the image actually occupies (see the Image style below). */
+  const contentWidth = width;
+  const contentHeight = height * PHOTO_HEIGHT_RATIO;
 
   const pan = Gesture.Pan()
     // One finger only: a two-finger drag belongs to the pinch.
     .maxPointers(1)
     .onUpdate((e) => {
       if (savedScale.value <= MIN_SCALE) return;
-      translateX.value = savedX.value + e.translationX;
-      translateY.value = savedY.value + e.translationY;
+      // Clamp so a zoomed photo can't be flung into empty black space with no
+      // way back. `clampPan` is a worklet-safe pure function (src/lib/zoomPan).
+      const next = clampPan(
+        savedX.value + e.translationX,
+        savedY.value + e.translationY,
+        contentWidth,
+        contentHeight,
+        width,
+        height,
+        savedScale.value,
+      );
+      translateX.value = next.x;
+      translateY.value = next.y;
     })
     .onEnd(() => {
       savedX.value = translateX.value;
@@ -185,7 +219,21 @@ function ZoomablePhoto({
       runOnJS(onZoomChange)(zoomingIn);
     });
 
-  const composed = Gesture.Simultaneous(pinch, Gesture.Exclusive(doubleTap, pan));
+  /**
+   * Composition matters here, and the previous arrangement is why you could
+   * zoom but not pan.
+   *
+   * It was `Simultaneous(pinch, Exclusive(doubleTap, pan))`. `Exclusive` means
+   * pan may not begin until doubleTap has FAILED — and a tap recogniser only
+   * fails after its multi-tap window expires. So a drag did nothing for the
+   * first few hundred milliseconds, by which point the finger was already
+   * moving and the gesture never took hold.
+   *
+   * All three can simply run together: a Tap cancels itself as soon as the
+   * finger travels past its slop, so a drag can never be mistaken for a tap,
+   * and pan starts on the very first movement.
+   */
+  const composed = Gesture.Simultaneous(pinch, pan, doubleTap);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [
@@ -201,7 +249,7 @@ function ZoomablePhoto({
         <Animated.View style={animatedStyle}>
           <Image
             source={{ uri }}
-            style={{ width, height: height * 0.8 }}
+            style={{ width, height: height * PHOTO_HEIGHT_RATIO }}
             contentFit="contain"
             transition={120}
           />

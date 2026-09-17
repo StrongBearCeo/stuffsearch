@@ -16,6 +16,8 @@ import { useTranslation } from 'react-i18next';
 import { hapticSuccess } from '../../src/lib/haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CONTENT_MAX_WIDTH } from '../../src/hooks/useResponsive';
+import { useKeyboardHeight } from '../../src/hooks/useKeyboardHeight';
+import { keyboardSpacerHeight } from '../../src/lib/keyboard';
 import type { ExternalCodeType } from '../../src/lib/supabase';
 
 export default function ScanScreen() {
@@ -26,6 +28,11 @@ export default function ScanScreen() {
   const insets = useSafeAreaInsets();
   const { width: winWidth } = useWindowDimensions();
   const sheetWidth = Math.min(winWidth - 32, CONTENT_MAX_WIDTH);
+  // The manual-entry sheet sits at the bottom of a Modal. Android's
+  // adjustResize does not apply inside a Modal window and KeyboardAvoidingView
+  // is a no-op there, so the keyboard covered the very field it had just
+  // focused. Lift the sheet by the keyboard's measured height instead.
+  const keyboardHeight = useKeyboardHeight();
 
   const [permission, requestPermission] = useCameraPermissions();
   /**
@@ -196,7 +203,18 @@ export default function ScanScreen() {
             onPress={() => setManualOpen(false)}
             style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)' }}
           />
-          <View style={{ backgroundColor: colors.bg, padding: 20, gap: 12, borderTopLeftRadius: 24, borderTopRightRadius: 24, width: sheetWidth, alignSelf: 'center' }}>
+          <View
+            style={{
+              backgroundColor: colors.bg,
+              padding: 20,
+              paddingBottom: 20 + keyboardSpacerHeight(keyboardHeight, insets.bottom),
+              gap: 12,
+              borderTopLeftRadius: 24,
+              borderTopRightRadius: 24,
+              width: sheetWidth,
+              alignSelf: 'center',
+            }}
+          >
             <H2>{t('scan.enterCode')}</H2>
             <Input
               value={manual}
@@ -229,7 +247,7 @@ export default function ScanScreen() {
           onCreateItem={(prefill) => {
             // Navigate to the new-item screen with the code prefilled.
             setCreate(null);
-            router.push({ pathname: '/item/new', params: { code: create.value, type: create.type, name: prefill?.name ?? '', category: prefill?.category ?? '' } } as never);
+            router.push({ pathname: '/item/new', params: { code: create.value, type: create.type, name: prefill?.name ?? '' } } as never);
             reset();
           }}
           onCreatePlace={(prefill) => {

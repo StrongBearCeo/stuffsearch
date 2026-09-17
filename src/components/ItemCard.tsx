@@ -39,7 +39,7 @@ export function ItemCard({
       onPress={onPress}
       disabled={!onPress}
       accessibilityRole="button"
-      accessibilityLabel={`${item.name}${item.category ? `, ${item.category}` : ''}`}
+      accessibilityLabel={item.name}
       accessibilityHint={located ? t('items.located') : t('items.notLocated')}
     >
       <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
@@ -56,7 +56,6 @@ export function ItemCard({
             {item.name}
             {quantityLabel ? <Text style={{ color: colors.textMuted }}> {quantityLabel}</Text> : null}
           </Body>
-          {item.category ? <Muted numberOfLines={1}>{item.category}</Muted> : null}
           {shownTags.length > 0 ? (
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 2 }}>
               {shownTags.map((tag) => (

@@ -140,16 +140,23 @@ function Overview() {
 
       {stats.unplaced > 0 || stats.unvalued > 0 ? (
         <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+          {/* These tiles ask a specific question ("13 not in a place"), so
+              tapping one must answer THAT question — the list opens filtered
+              to exactly the rows the tile counted, not to everything. */}
           {stats.unplaced > 0 ? (
             <NudgeTile
               label={t('home.unplaced', { count: stats.unplaced })}
-              onPress={() => router.push('/(tabs)/items')}
+              onPress={() =>
+                router.push({ pathname: '/(tabs)/items', params: { filter: 'unplaced' } })
+              }
             />
           ) : null}
           {stats.unvalued > 0 ? (
             <NudgeTile
               label={t('items.notValued', { count: stats.unvalued })}
-              onPress={() => router.push('/(tabs)/items')}
+              onPress={() =>
+                router.push({ pathname: '/(tabs)/items', params: { filter: 'unvalued' } })
+              }
             />
           ) : null}
         </View>

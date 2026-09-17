@@ -208,7 +208,6 @@ export type Database = {
       }
       items: {
         Row: {
-          category: string | null
           created_at: string
           created_by: string | null
           current_place_id: string | null
@@ -233,7 +232,6 @@ export type Database = {
           value_updated_at: string | null
         }
         Insert: {
-          category?: string | null
           created_at?: string
           created_by?: string | null
           current_place_id?: string | null
@@ -258,7 +256,6 @@ export type Database = {
           value_updated_at?: string | null
         }
         Update: {
-          category?: string | null
           created_at?: string
           created_by?: string | null
           current_place_id?: string | null

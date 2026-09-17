@@ -36,7 +36,6 @@ export function useBindExternalCode() {
       codeType: ExternalCodeType;
       entityType: ExternalEntityType;
       entityId: string;
-      label?: string;
       boundBy: string;
     }) => bindExternalCode(params),
     onSuccess: (_d, vars) => {

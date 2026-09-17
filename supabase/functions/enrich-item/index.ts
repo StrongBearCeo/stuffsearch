@@ -1,5 +1,5 @@
 // enrich-item: given photos + barcode + text hints, ask a vision chat model for
-// a suggested name / category / description / product links / tags / value.
+// a suggested name / description / product links / tags / value.
 // The user confirms everything before saving.
 //
 // Three things this function guarantees to the client:
@@ -13,13 +13,12 @@
 //      being handed to the user as a working product page.
 import { json, corsHeaders } from '../_shared/cors.ts';
 
-type EnrichField = 'name' | 'description' | 'category' | 'tags' | 'links' | 'value';
+type EnrichField = 'name' | 'description' | 'tags' | 'links' | 'value';
 
 interface EnrichRequest {
   householdId: string;
   name?: string;
   description?: string;
-  category?: string;
   photoUrls?: string[];
   existingLinks?: string[];
   existingTags?: string[];
@@ -38,7 +37,6 @@ interface EnrichRequest {
 const FIELD_KEYS: Record<EnrichField, string[]> = {
   name: ['name'],
   description: ['description'],
-  category: ['category'],
   tags: ['tags'],
   links: ['product_links'],
   value: ['estimated_value', 'value_currency'],
@@ -143,7 +141,7 @@ Deno.serve(async (req: Request) => {
   }
 
   const {
-    name, description, category, photoUrls, existingLinks, existingTags,
+    name, description, photoUrls, existingLinks, existingTags,
     barcode, barcodeType, language, instruction, field, entity,
   } = body;
   const photos = (photoUrls ?? []).filter((u) => typeof u === 'string' && u.length > 0);
@@ -164,7 +162,6 @@ Deno.serve(async (req: Request) => {
     name: isPlace
       ? '  name           a short, findable name for this storage location (e.g. "Top left black shelf, garage")'
       : '  name           short product name (brand + model when visible)',
-    category: '  category       one lowercase word',
     description: isPlace
       ? '  description    one or two sentences: where this place is and what belongs in it'
       : '  description    one or two sentences: what it is, key specs, visible condition',
@@ -181,10 +178,14 @@ Deno.serve(async (req: Request) => {
   };
 
   // A place is not a product: no purchase links, no resale value.
-  const placeKeys = ['name', 'category', 'description', 'tags'];
+  const placeKeys = ['name', 'description', 'tags'];
   const defaultKeys = isPlace ? placeKeys : Object.keys(allKeys);
-  const wantedKeys = field
-    ? FIELD_KEYS[field].filter((k) => defaultKeys.includes(k))
+  // An UNKNOWN field degrades to "no narrowing" rather than crashing. Older
+  // installed clients still ask for `category`, which was retired in migration
+  // 0011 — `FIELD_KEYS[field]` is then undefined and `.filter` threw a 500.
+  const requested = field && FIELD_KEYS[field] ? FIELD_KEYS[field] : null;
+  const wantedKeys = requested
+    ? requested.filter((k) => defaultKeys.includes(k))
     : defaultKeys;
   // A place has no links/value to give, so a ✨ on those fields has no answer.
   if (wantedKeys.length === 0) {
@@ -206,8 +207,8 @@ Deno.serve(async (req: Request) => {
       : 'size markings and visible condition are all evidence.',
     'If photos are provided, base your answer primarily on them.',
     '',
-    field
-      ? `Respond ONLY with a JSON object, no prose, containing EXACTLY these keys and nothing else:`
+    requested
+      ? 'Respond ONLY with a JSON object, no prose, containing EXACTLY these keys and nothing else:'
       : 'Respond ONLY with a JSON object, no prose, with these keys:',
     ...wantedKeys.map((k) => allKeys[k]),
     '',
@@ -217,7 +218,6 @@ Deno.serve(async (req: Request) => {
   const userText = [
     name ? `Current name: ${name}` : null,
     description ? `Current description: ${description}` : null,
-    category ? `Current category: ${category}` : null,
     knownTags.length ? `Current tags: ${knownTags.join(', ')}` : null,
     barcode ? `Barcode (${barcodeType ?? 'unknown'}): ${barcode}` : null,
     known.length
@@ -229,7 +229,7 @@ Deno.serve(async (req: Request) => {
     followUp
       ? `The user added this instruction — follow it, and let it override your own reading of the photos where they conflict:\n"""\n${followUp}\n"""`
       : null,
-    field ? `Suggest ONLY the ${field} field.` : 'Suggest enriched fields.',
+    requested ? `Suggest ONLY the ${field} field.` : 'Suggest enriched fields.',
   ]
     .filter(Boolean)
     .join('\n');
@@ -295,7 +295,6 @@ Deno.serve(async (req: Request) => {
 
     return json({
       name: typeof parsed.name === 'string' ? parsed.name : undefined,
-      category: typeof parsed.category === 'string' ? parsed.category : undefined,
       description: typeof parsed.description === 'string' ? parsed.description : undefined,
       product_links,
       rejected_links,

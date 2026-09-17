@@ -30,7 +30,7 @@ describe('stem', () => {
 });
 
 describe('scoreEntity', () => {
-  const tileCutter = { name: 'Tile cutter', description: 'Manual 24-inch', category: 'tools' };
+  const tileCutter = { name: 'Tile cutter', description: 'Manual 24-inch' };
 
   it('scores a partial multi-word query above zero', () => {
     // The reported bug: "Husky tile cutter" found nothing while "tile cutter" worked.
@@ -67,7 +67,7 @@ describe('scoreEntity', () => {
   });
 
   it('is case-insensitive and copes with null fields', () => {
-    expect(scoreEntity({ name: 'TILE CUTTER', description: null, category: null }, 'tile')).toBeGreaterThan(0);
+    expect(scoreEntity({ name: 'TILE CUTTER', description: null, tags: null }, 'tile')).toBeGreaterThan(0);
   });
 });
 

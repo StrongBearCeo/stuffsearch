@@ -11,7 +11,6 @@ import { applyFieldEnrichment, ENRICHABLE_FIELDS, type EnrichSnapshot } from '..
 const current: EnrichSnapshot = {
   name: 'Old name',
   description: 'Old description',
-  category: 'old-category',
   links: ['https://mine.com/p'],
   tags: ['mine'],
   estimatedValue: 5,
@@ -21,7 +20,6 @@ const current: EnrichSnapshot = {
 
 const suggestion = {
   name: 'Husky tile cutter',
-  category: 'tools',
   description: '24-inch manual cutter',
   product_links: ['https://shop.com/x'],
   tags: ['tools', 'tiling'],
@@ -34,7 +32,6 @@ describe('applyFieldEnrichment', () => {
     const out = applyFieldEnrichment(current, suggestion, 'name');
     expect(out.name).toBe('Husky tile cutter');
     expect(out.description).toBe('Old description');
-    expect(out.category).toBe('old-category');
     expect(out.links).toEqual(['https://mine.com/p']);
     expect(out.tags).toEqual(['mine']);
     expect(out.estimatedValue).toBe(5);
@@ -43,12 +40,6 @@ describe('applyFieldEnrichment', () => {
   it('updates the description alone', () => {
     const out = applyFieldEnrichment(current, suggestion, 'description');
     expect(out.description).toBe('24-inch manual cutter');
-    expect(out.name).toBe('Old name');
-  });
-
-  it('updates the category alone', () => {
-    const out = applyFieldEnrichment(current, suggestion, 'category');
-    expect(out.category).toBe('tools');
     expect(out.name).toBe('Old name');
   });
 
@@ -104,7 +95,6 @@ describe('applyFieldEnrichment', () => {
     expect(ENRICHABLE_FIELDS).toEqual([
       'name',
       'description',
-      'category',
       'tags',
       'links',
       'value',

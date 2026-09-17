@@ -36,8 +36,8 @@ async function invokeFunction<T>(name: string, body: unknown): Promise<T> {
 }
 
 /**
- * enrich-item: photos + barcode + text → suggested name / category /
- * description / product links / tags / value.
+ * enrich-item: photos + barcode + text → suggested name / description /
+ * product links / tags / value.
  *
  * The function is vision-capable: whatever is in `photoUrls` is sent to the
  * model as image content, so an item with photos and no text still gets
@@ -49,7 +49,6 @@ export interface EnrichItemRequest {
   householdId: string;
   name?: string;
   description?: string;
-  category?: string;
   photoUrls?: string[];
   existingLinks?: string[];
   existingTags?: string[];
@@ -68,7 +67,7 @@ export interface EnrichItemRequest {
    * still SEES everything (a good description needs the photos and the name);
    * it's the answer that narrows.
    */
-  field?: 'name' | 'description' | 'category' | 'tags' | 'links' | 'value';
+  field?: 'name' | 'description' | 'tags' | 'links' | 'value';
   /**
    * What is being enriched. Places take the same treatment as items — a photo
    * of a shelf can name it and suggest tags — but the model is told to
@@ -78,7 +77,6 @@ export interface EnrichItemRequest {
 }
 export interface EnrichItemResponse {
   name?: string;
-  category?: string;
   description?: string;
   /** Legacy single-link field; still read by applyEnrichment. */
   product_link?: string;
@@ -103,7 +101,6 @@ export interface SemanticSearchResult {
   item_id: string;
   name: string;
   description: string | null;
-  category: string | null;
   current_place_id: string | null;
   score: number;
 }

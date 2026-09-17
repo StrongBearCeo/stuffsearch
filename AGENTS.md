@@ -80,6 +80,26 @@ covered by tests before the work is considered done.
   to a dead row and re-binding it raised 23505. Triggers on `items`/`places`
   now sweep them. Surface a genuine collision with `isDuplicateCodeError`
   (`src/lib/errors.ts`), never the raw constraint name.
+- **There is no `items.category`.** It duplicated tags while being worse at the
+  job — one unnormalised free-text value, no filter UI — and an AI-filled field
+  with no normalisation produced `tool` AND `tools`, `cable` AND `cables`.
+  Migration 0011 folded every category into `tags` and dropped the column. Use
+  tags; don't reintroduce a second labelling axis.
+- **Photo rotation re-encodes the image** (`usePhotoRotate`), it is not a
+  display-time transform. An orientation column would have to be threaded
+  through every list, card, print sheet and AI upload, and anything that missed
+  it would show the photo the wrong way up.
+- **A bottom sheet inside a `Modal` must lift itself above the keyboard.**
+  Android ignores `adjustResize` inside a Modal window and `KeyboardAvoidingView`
+  is a no-op there, so the keyboard covers the very field it just focused. Pad
+  with `keyboardSpacerHeight(useKeyboardHeight(), insets.bottom)` — see the scan
+  tab's manual entry and `CreatePlaceSheet`.
+- **Gesture composition: `Exclusive` delays, `Simultaneous` doesn't.** Pan was
+  composed as `Exclusive(doubleTap, pan)`, so a drag could not start until the
+  tap recogniser timed out — which read as "zoom works, pan doesn't". A Tap
+  cancels itself once the finger moves, so the three can simply run together.
+  Arithmetic that runs inside a worklet (e.g. `clampPan`) needs an explicit
+  `'worklet'` directive: reanimated does NOT workletize imported functions.
 - **Codes are optional.** `useCreateItem` / `useCreatePlace` do NOT mint a
   `qr_token`; a thing may have zero, one, or many codes (`qr_token` plus any
   number of `external_codes` rows). Never assume `qr_token` is set — guard every

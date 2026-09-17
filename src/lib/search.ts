@@ -44,7 +44,6 @@ export function stem(word: string): string {
 export interface SearchFields {
   name: string;
   description?: string | null;
-  category?: string | null;
   tags?: string[] | null;
 }
 
@@ -70,7 +69,7 @@ export function scoreEntity(fields: SearchFields, query: string): number {
   if (tokens.length === 0) return 1;
 
   const name = (fields.name ?? '').toLowerCase();
-  const rest = [fields.description ?? '', fields.category ?? '', (fields.tags ?? []).join(' ')]
+  const rest = [fields.description ?? '', (fields.tags ?? []).join(' ')]
     .join(' ')
     .toLowerCase();
 

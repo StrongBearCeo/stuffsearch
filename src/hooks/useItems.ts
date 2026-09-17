@@ -25,7 +25,6 @@ function itemSearchFields(item: Item): SearchFields {
   return {
     name: item.name,
     description: item.description,
-    category: item.category,
     tags: item.tags,
   };
 }
@@ -117,7 +116,6 @@ export function useCreateItem() {
         household_id: activeHouseholdId,
         name: input.name ?? 'Untitled',
         description: input.description,
-        category: input.category,
         photo_urls: input.photo_urls ?? [],
         product_link: input.product_link,
         product_links: input.product_links ?? [],

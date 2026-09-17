@@ -35,7 +35,10 @@
     "cover": "Cover",
     "moveEarlier": "Move photo earlier",
     "moveLater": "Move photo later",
-    "reorderHint": "Use ‹ › to reorder — the first photo is the cover."
+    "reorderHint": "Use ‹ › to reorder — the first photo is the cover.",
+    "rotate": "Rotate photo",
+    "rotateHint": "Tap ⟳ to turn a photo a quarter turn.",
+    "rotateFailed": "Couldn’t rotate that photo."
   },
   "auth": {
     "welcome": "Welcome to StuffSearch",
@@ -88,7 +91,6 @@
     "new": "Add item",
     "name": "Name",
     "description": "Description",
-    "category": "Category",
     "location": "Location",
     "located": "Located",
     "notLocated": "Not in a place",
@@ -161,7 +163,10 @@
     "bulkMoveDone": "{{count}} item moved",
     "bulkMoveDone_plural": "{{count}} items moved",
     "bulkMoveFailed": "{{count}} item couldn’t be moved",
-    "bulkMoveFailed_plural": "{{count}} items couldn’t be moved"
+    "bulkMoveFailed_plural": "{{count}} items couldn’t be moved",
+    "scanDestination": "Scan a place",
+    "scanDestinationHint": "Scan the place to move {{count}} item into",
+    "scanDestinationHint_plural": "Scan the place to move {{count}} items into"
   },
   "history": {
     "movedFromTo": "Moved from {{from}} to {{to}}",
@@ -270,7 +275,6 @@
     "bind": "Bind code",
     "value": "Code value",
     "type": "Type",
-    "label": "Label",
     "unbind": "Unbind",
     "unbindConfirm": "Unbind this code from the item?",
     "addByScan": "Scan to add a code",
@@ -369,6 +373,8 @@
     "unitsHint_plural": "{{count}} units",
     "unplaced": "{{count}} not in a place",
     "unplaced_plural": "{{count}} not in a place",
-    "browseByTag": "Browse by tag"
+    "browseByTag": "Browse by tag",
+    "filter_unplaced": "Not in a place",
+    "filter_unvalued": "No value yet"
   }
 }

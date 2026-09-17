@@ -3,7 +3,7 @@
  *
  *  This is NOT destructive any more. The RPC used to copy a few of the item's
  *  fields onto a new place and then DELETE the item, silently discarding its
- *  category, value, product links and extra photos. It now creates a place
+ *  value, product links and extra photos. It now creates a place
  *  FACET (`places.item_id` → the item) carrying the name, description, photos,
  *  tags and location across, and leaves the item entirely intact: the thing
  *  stays an item and additionally becomes somewhere you can store things.

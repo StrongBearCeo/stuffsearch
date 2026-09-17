@@ -50,6 +50,7 @@ Migrations live in `supabase/migrations/` and are applied to the live project vi
 | `0008_function_grants.sql` | revoke EXECUTE from PUBLIC (not just `anon` — `anon` inherits PUBLIC's default grant) on `fts_search` and `convert_item_to_place`; enable RLS on the `edge_ai_errors` diagnostics table |
 | `0009_rpc_auth_hardening.sql` | stop `resolve_code` trusting a caller-supplied user id |
 | `0010_places_as_items_placements_photos.sql` | `items.quantity`; `item_placements` (one item in several places); `places.photo_urls[]`; `places.item_id` (a place that IS an item) + the `sync_place_from_item` trigger and `place_would_cycle` guard; `external_codes` garbage-collection triggers; non-destructive `convert_item_to_place()` |
+| `0011_category_into_tags.sql` | fold `items.category` into `items.tags` (merging exact singular/plural pairs) and drop the column; `fts_search` / `semantic_match` recreated without it |
 
 ### Key design rules
 - **Household-scoped everything.** All rows carry `household_id`; RLS enforces membership.
@@ -83,7 +84,7 @@ All deployed with `verify_jwt = true` (caller must be signed in):
 
 ## Tags, value, links, photos
 
-- **Tags** (`items.tags`, `places.tags` — `text[]` + GIN) are free-form lowercase labels: `return`, `fragile`, `winter`. Tap a chip on the Items or Places tab to filter (multiple chips = AND). Normalization lives in `src/lib/tags.ts`; the form offers tags already used in the household as one-tap suggestions.
+- **Tags are the only labelling axis.** There used to be a separate single-value `category` too; it had no filter UI and, being AI-filled free text, produced `tool` alongside `tools`. Migration 0011 folded it into tags. **Tags** (`items.tags`, `places.tags` — `text[]` + GIN) are free-form lowercase labels: `return`, `fragile`, `winter`. Tap a chip on the Items or Places tab to filter (multiple chips = AND). Normalization lives in `src/lib/tags.ts`; the form offers tags already used in the household as one-tap suggestions.
 - **Value.** Each item can carry an `estimated_value` + `value_currency`. ✨ *Enrich with AI* asks the model for one; you can overwrite it, which flips `value_source` to `manual` and protects it from whole-form enrichment. Tapping ✨ on the **value field itself** is an explicit request for a fresh estimate and does replace it — that's how an existing item gets re-valued, from its own detail screen, at any time. The Items tab totals the visible items per currency (`src/lib/value.ts`), and a place shows the total value of its contents.
 - **AI enrichment.** ✨ *Enrich with AI* fills the whole form; the small ✨ beside each field rewrites just that field. Both send the photos **and** the name, description, category, tags and barcode — which is why the button is no longer called "identify from photo". A free-text box above it ("it's the 18V model, not 20V") is passed to the model as an instruction that outranks its own reading of the images. Places get the same treatment, with the model told it's describing a storage location rather than a product.
 - **Links.** An item holds a *list* of product links (`product_links text[]`, with `product_link` mirrored as the first entry for older clients). Enrichment appends, never replaces (`src/lib/enrich.ts`). Long URLs wrap over multiple lines rather than being truncated.

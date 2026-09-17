@@ -13,6 +13,7 @@ import { ScanCameraModal } from '../../src/components/ScanCameraModal';
 import { useCreatePlace, useUpdatePlace, usePlace, usePlaces } from '../../src/hooks/usePlaces';
 import { useUpdateItem } from '../../src/hooks/useItems';
 import { usePhotoPicker, type PhotoSource } from '../../src/hooks/usePhotoPicker';
+import { usePhotoRotate } from '../../src/hooks/usePhotoRotate';
 import { useBindExternalCode } from '../../src/hooks/useExternalCode';
 import { useHousehold } from '../../src/lib/household';
 import { useAuth } from '../../src/lib/auth';
@@ -21,7 +22,7 @@ import { enrichItem } from '../../src/lib/llm';
 import { applyFieldEnrichment, type EnrichableField } from '../../src/lib/enrich';
 import { scannerTypeToCodeType } from '../../src/lib/constants';
 import { collectTags } from '../../src/lib/tags';
-import { addPhotos, movePhoto, removePhotoAt, placePhotos, placePhotoColumns } from '../../src/lib/photos';
+import { addPhotos, movePhoto, removePhotoAt, replacePhotoAt, placePhotos, placePhotoColumns } from '../../src/lib/photos';
 import { createSubmitGuard } from '../../src/lib/submit';
 import { colors, radius, spacing, tint } from '../../src/theme';
 import { useTranslation } from 'react-i18next';
@@ -50,6 +51,12 @@ export default function NewPlaceScreen() {
   // the picker in single mode and overwrite `photo`, which is why a second
   // photo always replaced the first.
   const { pickAndUpload, uploading: photoUploading, error: photoError, clearError } = usePhotoPicker('places', true);
+  const {
+    rotate: rotatePhoto,
+    rotatingIndex,
+    error: rotateError,
+    clearError: clearRotateError,
+  } = usePhotoRotate('places');
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -114,6 +121,15 @@ export default function NewPlaceScreen() {
     if (urls && urls.length > 0) {
       setPhotos((prev) => addPhotos(prev, urls));
     }
+  }
+
+  /** Rotate one photo a quarter turn and swap in the new URL in place. */
+  async function onRotatePhoto(index: number) {
+    clearRotateError();
+    const current = photos[index];
+    if (!current) return;
+    const rotated = await rotatePhoto(current, index);
+    if (rotated) setPhotos((prev) => replacePhotoAt(prev, index, rotated));
   }
 
   async function onSave() {
@@ -203,7 +219,6 @@ export default function NewPlaceScreen() {
       const snapshot = {
         name,
         description,
-        category: '',
         links: [],
         tags,
         estimatedValue: null,
@@ -291,9 +306,12 @@ export default function NewPlaceScreen() {
           onAdd={onAddPhoto}
           onRemove={(i) => setPhotos((prev) => removePhotoAt(prev, i))}
           onMove={(from, to) => setPhotos((prev) => movePhoto(prev, from, to))}
+          onRotate={onRotatePhoto}
+          rotatingIndex={rotatingIndex}
           uploading={photoUploading}
         />
         {photoError ? <ErrorBanner message={photoError} /> : null}
+        {rotateError ? <ErrorBanner message={rotateError} /> : null}
       </View>
 
       <Card style={{ gap: spacing.sm }}>
@@ -321,8 +339,12 @@ export default function NewPlaceScreen() {
             placeholder={t('places.name')}
             value={name}
             onChangeText={setName}
+            // Place names get long ("Cabinet to the right of the fireplace in
+            // the living room"); a single line clipped them while editing.
+            multiline
             clearable
             clearLabel={`${t('common.clear')} ${t('places.name')}`}
+            style={{ minHeight: 48 }}
           />
         </Field>
         <Field label={t('places.description')} action={fieldAi('description')}>

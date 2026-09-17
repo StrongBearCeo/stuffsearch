@@ -3,7 +3,6 @@ import { applyEnrichment, type EnrichSnapshot } from '../enrich';
 const base: EnrichSnapshot = {
   name: '',
   description: '',
-  category: '',
   links: [],
   tags: [],
   estimatedValue: null,
@@ -14,11 +13,9 @@ describe('applyEnrichment', () => {
   it('fills empty fields from the suggestion', () => {
     const out = applyEnrichment(base, {
       name: 'Husky tile cutter',
-      category: 'tools',
       description: '24-inch manual cutter',
     });
     expect(out.name).toBe('Husky tile cutter');
-    expect(out.category).toBe('tools');
     expect(out.description).toBe('24-inch manual cutter');
   });
 
@@ -95,7 +92,6 @@ describe('applyEnrichment', () => {
     const current: EnrichSnapshot = {
       name: 'A',
       description: 'B',
-      category: 'C',
       links: ['https://a.com'],
       tags: ['t'],
       estimatedValue: 1,
@@ -105,7 +101,6 @@ describe('applyEnrichment', () => {
     expect(out).toEqual({
       name: 'A',
       description: 'B',
-      category: 'C',
       links: ['https://a.com'],
       tags: ['t'],
       estimatedValue: 1,

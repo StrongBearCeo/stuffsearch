@@ -41,6 +41,28 @@ export function movePhoto(photos: string[], from: number, to: number): string[] 
   return next;
 }
 
+/**
+ * Swap one URL in place, keeping its position — used when a photo is rotated
+ * and re-uploaded under a new name. Position matters: element 0 is the cover
+ * photo, and rotating it must not demote it.
+ *
+ * A blank replacement is ignored rather than punching a hole in the list, so a
+ * failed rotate leaves the original in place.
+ */
+export function replacePhotoAt(photos: string[], index: number, url: string): string[] {
+  const clean = (url ?? '').trim();
+  if (!clean || index < 0 || index >= photos.length) return [...photos];
+  const next = [...photos];
+  next[index] = clean;
+  return next;
+}
+
+/** Quarter turns, clockwise, wrapping at a full revolution. */
+export function nextRotation(current: number): 0 | 90 | 180 | 270 {
+  const normalized = ((Math.round(current / 90) * 90) % 360 + 360) % 360;
+  return ((normalized + 90) % 360) as 0 | 90 | 180 | 270;
+}
+
 /** The subset of a place row this module reads. */
 export interface PhotoedPlace {
   photo_url?: string | null;

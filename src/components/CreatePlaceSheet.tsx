@@ -7,8 +7,11 @@
  *  Kept presentational: it owns only the form field state and hands the
  *  submitted { name, description } up via onCreate. */
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, Modal, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, KeyboardAvoidingView, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button, Input, H2, Muted, ErrorBanner } from './primitives';
+import { useKeyboardHeight } from '../hooks/useKeyboardHeight';
+import { keyboardSpacerHeight } from '../lib/keyboard';
 import { colors, radius, spacing } from '../theme';
 import { useTranslation } from 'react-i18next';
 
@@ -32,6 +35,10 @@ export function CreatePlaceSheet({
   onClose,
 }: CreatePlaceSheetProps) {
   const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
+  // Android ignores adjustResize inside a Modal and KeyboardAvoidingView is a
+  // no-op there, so the keyboard covered the fields. Lift by its height.
+  const keyboardHeight = useKeyboardHeight();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -73,6 +80,7 @@ export function CreatePlaceSheet({
             borderTopLeftRadius: radius.xl,
             borderTopRightRadius: radius.xl,
             padding: spacing.lg,
+            paddingBottom: spacing.lg + keyboardSpacerHeight(keyboardHeight, insets.bottom),
             gap: 12,
             maxHeight: '85%',
           }}

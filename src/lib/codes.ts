@@ -9,7 +9,6 @@ import { sanitizeScanPayload, isUsableScanPayload } from './scanPayload';
 
 export interface ProductInfo {
   name?: string;
-  category?: string;
   description?: string;
   image_url?: string;
   product_link?: string;
@@ -22,7 +21,6 @@ export async function bindExternalCode(params: {
   codeType: ExternalCodeType;
   entityType: ExternalEntityType;
   entityId: string;
-  label?: string;
   boundBy: string;
 }): Promise<ExternalCode> {
   // Last line of defence before the insert. A raw payload containing a NUL is
@@ -40,7 +38,6 @@ export async function bindExternalCode(params: {
       code_type: params.codeType,
       entity_type: params.entityType,
       entity_id: params.entityId,
-      label: params.label,
       bound_by: params.boundBy,
     })
     .select()

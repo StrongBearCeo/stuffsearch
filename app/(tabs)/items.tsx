@@ -2,12 +2,13 @@
  *  summary, and a selection mode for moving several items at once. */
 import React, { useCallback, useMemo, useState } from 'react';
 import { View, FlatList, RefreshControl, Text, TouchableOpacity, Alert } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import {
   Screen, Input, EmptyState, ErrorBanner, Button, H1, Muted, Body, Card, ListSkeleton,
 } from '../../src/components/primitives';
 import { ItemCard } from '../../src/components/ItemCard';
 import { TagFilterBar } from '../../src/components/Tags';
+import { ScanCameraModal } from '../../src/components/ScanCameraModal';
 import { useItems, useBulkMoveItems } from '../../src/hooks/useItems';
 import { usePlaces } from '../../src/hooks/usePlaces';
 import { useRecentPlaces } from '../../src/hooks/useRecentPlaces';
@@ -16,6 +17,10 @@ import { collectTags, matchesTags } from '../../src/lib/tags';
 import { summarizeValue, formatTotals } from '../../src/lib/value';
 import { toggleSelected, selectAll, clearSelection, isAllSelected, selectedFrom } from '../../src/lib/selection';
 import { orderByRecent } from '../../src/lib/recent';
+import { applyItemFilter, isItemFilter } from '../../src/lib/itemFilter';
+import { scanTargetPlaceId } from '../../src/lib/facets';
+import { useScan } from '../../src/hooks/useScan';
+import { supabase } from '../../src/lib/supabase';
 import type { Item, Place } from '../../src/lib/supabase';
 import { spacing, colors, radius, tint } from '../../src/theme';
 import { useTranslation } from 'react-i18next';
@@ -30,6 +35,15 @@ export default function ItemsScreen() {
   const [selecting, setSelecting] = useState(false);
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   const [movePicker, setMovePicker] = useState(false);
+  /** Scanning a place's label as the bulk-move destination. */
+  const [scanOpen, setScanOpen] = useState(false);
+  const [scanNotice, setScanNotice] = useState<string | null>(null);
+  const { resolve, resolving } = useScan();
+
+  // A filter carried in from the home screen's "13 not in a place" tiles.
+  const params = useLocalSearchParams<{ filter?: string }>();
+  const [dismissedFilter, setDismissedFilter] = useState(false);
+  const activeFilter = !dismissedFilter && isItemFilter(params.filter) ? params.filter : null;
   // `isRefetching` (a user-initiated refresh) NOT `isFetching`: every
   // background refetch flipped isFetching, which re-mounted the RefreshControl
   // mid-scroll and made the list jump and flicker — most visibly right after
@@ -52,8 +66,8 @@ export default function ItemsScreen() {
   const searched = useMemo(() => data ?? [], [data]);
   const tagCounts = useMemo(() => collectTags(searched), [searched]);
   const visible = useMemo(
-    () => searched.filter((i) => matchesTags(i.tags, selectedTags)),
-    [searched, selectedTags],
+    () => applyItemFilter(searched.filter((i) => matchesTags(i.tags, selectedTags)), activeFilter),
+    [searched, selectedTags, activeFilter],
   );
   const visibleIds = useMemo(() => visible.map((i) => i.id), [visible]);
 
@@ -103,6 +117,45 @@ export default function ItemsScreen() {
     } catch (e) {
       Alert.alert(t('errors.generic'), e instanceof Error ? e.message : undefined);
     }
+  }
+
+  /**
+   * Scan a place's label as the bulk-move destination, instead of hunting for
+   * it in a list of every place in the household — the label is usually right
+   * in front of you while your arms are full of the things you're moving.
+   */
+  async function onScanDestination(payload: string) {
+    const o = await resolve(payload);
+    if (!o) {
+      setScanNotice(t('errors.generic'));
+      return;
+    }
+    if (o.type !== 'matched') {
+      setScanNotice(t('items.scanNotAPlace'));
+      return;
+    }
+    if (!o.inActiveHousehold) {
+      setScanNotice(t('scanResolve.otherHousehold'));
+      return;
+    }
+    const m = o.matches[0];
+    // An item that is ALSO a place is a valid destination.
+    let facetId: string | null = null;
+    if (m.entity_type === 'item') {
+      const { data } = await supabase
+        .from('places')
+        .select('id')
+        .eq('item_id', m.entity_id)
+        .maybeSingle();
+      facetId = (data?.id as string | undefined) ?? null;
+    }
+    const placeId = scanTargetPlaceId(m, facetId);
+    if (!placeId) {
+      setScanNotice(t('items.scanNotAPlace'));
+      return;
+    }
+    setScanOpen(false);
+    await onBulkMove(placeId);
   }
 
   const renderItem = useCallback(
@@ -182,6 +235,31 @@ export default function ItemsScreen() {
           onToggle={toggleTag}
           onClear={() => setSelectedTags([])}
         />
+
+        {activeFilter ? (
+          <TouchableOpacity
+            onPress={() => setDismissedFilter(true)}
+            accessibilityRole="button"
+            accessibilityLabel={`${t(`home.filter_${activeFilter}`)} — ${t('common.clear')}`}
+            style={{
+              alignSelf: 'flex-start',
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 6,
+              paddingHorizontal: 10,
+              paddingVertical: 5,
+              borderRadius: 999,
+              borderWidth: 1,
+              borderColor: colors.warning,
+              backgroundColor: tint(colors.warning),
+            }}
+          >
+            <Text style={{ color: colors.warning, fontSize: 13 }}>
+              {t(`home.filter_${activeFilter}`)}
+            </Text>
+            <Text style={{ color: colors.warning, fontSize: 13, fontWeight: '700' }}>✕</Text>
+          </TouchableOpacity>
+        ) : null}
 
         {!isLoading ? (
           <Muted accessibilityRole="summary">
@@ -282,10 +360,36 @@ export default function ItemsScreen() {
                   loading={bulkMove.isPending}
                 />
               </View>
+              <View style={{ flex: 1 }}>
+                <Button
+                  title={t('items.scanDestination')}
+                  variant="ghost"
+                  onPress={() => {
+                    setMovePicker(false);
+                    setScanNotice(null);
+                    setScanOpen(true);
+                  }}
+                  disabled={selected.size === 0}
+                />
+              </View>
             </View>
           </Card>
         </View>
       ) : null}
+
+      <ScanCameraModal
+        visible={scanOpen}
+        hint={t('items.scanDestinationHint', { count: selected.size })}
+        notice={scanNotice}
+        onDismissNotice={() => setScanNotice(null)}
+        busy={resolving || bulkMove.isPending}
+        onUnreadable={() => setScanNotice(t('scan.unreadable'))}
+        onClose={() => {
+          setScanOpen(false);
+          setScanNotice(null);
+        }}
+        onScan={onScanDestination}
+      />
 
       {/* A tinted strip makes selection mode obvious at a glance. */}
       {selecting ? (

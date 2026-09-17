@@ -35,7 +35,10 @@
     "cover": "Ảnh bìa",
     "moveEarlier": "Chuyển ảnh lên trước",
     "moveLater": "Chuyển ảnh xuống sau",
-    "reorderHint": "Dùng ‹ › để sắp xếp — ảnh đầu tiên là ảnh bìa."
+    "reorderHint": "Dùng ‹ › để sắp xếp — ảnh đầu tiên là ảnh bìa.",
+    "rotate": "Xoay ảnh",
+    "rotateHint": "Chạm ⟳ để xoay ảnh một phần tư vòng.",
+    "rotateFailed": "Không xoay được ảnh này."
   },
   "auth": {
     "welcome": "Chào mừng đến StuffSearch",
@@ -88,7 +91,6 @@
     "new": "Thêm đồ",
     "name": "Tên",
     "description": "Mô tả",
-    "category": "Danh mục",
     "location": "Vị trí",
     "located": "Đã để nơi",
     "notLocated": "Chưa để vào nơi nào",
@@ -161,7 +163,10 @@
     "bulkMoveDone": "Đã chuyển {{count}} món đồ",
     "bulkMoveDone_plural": "Đã chuyển {{count}} món đồ",
     "bulkMoveFailed": "Không chuyển được {{count}} món đồ",
-    "bulkMoveFailed_plural": "Không chuyển được {{count}} món đồ"
+    "bulkMoveFailed_plural": "Không chuyển được {{count}} món đồ",
+    "scanDestination": "Quét nơi chứa",
+    "scanDestinationHint": "Quét nơi chứa để chuyển {{count}} món đồ vào",
+    "scanDestinationHint_plural": "Quét nơi chứa để chuyển {{count}} món đồ vào"
   },
   "history": {
     "movedFromTo": "Đã chuyển từ {{from}} sang {{to}}",
@@ -270,7 +275,6 @@
     "bind": "Gán mã",
     "value": "Giá trị mã",
     "type": "Loại",
-    "label": "Nhãn",
     "unbind": "Bỏ gán",
     "unbindConfirm": "Bỏ gán mã này khỏi đồ vật?",
     "addByScan": "Quét để thêm mã",
@@ -369,6 +373,8 @@
     "unitsHint_plural": "{{count}} cái",
     "unplaced": "{{count}} chưa có nơi chứa",
     "unplaced_plural": "{{count}} chưa có nơi chứa",
-    "browseByTag": "Duyệt theo thẻ"
+    "browseByTag": "Duyệt theo thẻ",
+    "filter_unplaced": "Chưa có nơi chứa",
+    "filter_unvalued": "Chưa có giá trị"
   }
 }
